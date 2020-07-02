@@ -6,7 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using NBitcoin;
 using WalletWasabi.Blockchain.Blocks;
+using WalletWasabi.Tests.Helpers;
 using Xunit;
+using static WalletWasabi.Tests.Helpers.TimeBoundedSection;
 
 namespace WalletWasabi.Tests.UnitTests
 {
@@ -65,7 +67,7 @@ namespace WalletWasabi.Tests.UnitTests
 		[Fact]
 		public async Task NotifyBlocksAsync()
 		{
-			using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1.5));
+			using var timeBoundedSection = new TimeBoundedSection(TimeSpan.FromSeconds(1.5));
 
 			const int BlockCount = 3;
 			var chain = new ConcurrentChain(Network.RegTest);
@@ -89,7 +91,7 @@ namespace WalletWasabi.Tests.UnitTests
 				if (h1 != h2)
 				{
 					message = string.Format("height={0}, [h1] {1} != [h2] {2}", height, h1, h2);
-					cts.Cancel();
+					timeBoundedSection.SetDone();
 					return;
 				}
 
@@ -97,7 +99,7 @@ namespace WalletWasabi.Tests.UnitTests
 
 				if (height == BlockCount)
 				{
-					cts.Cancel();
+					timeBoundedSection.SetDone();
 				}
 			}
 
@@ -111,7 +113,7 @@ namespace WalletWasabi.Tests.UnitTests
 			notifier.TriggerRound();
 
 			// Waits at most 1.5s given CancellationTokenSource definition
-			await Task.WhenAny(Task.Delay(Timeout.InfiniteTimeSpan, cts.Token)).ConfigureAwait(false);
+			Assert.Equal(Result.Ok, await timeBoundedSection.WaitAsync().ConfigureAwait(false));
 
 			Assert.True(string.IsNullOrEmpty(message), message);
 
