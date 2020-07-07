@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 using System.IO;
 using System.Linq;
@@ -19,21 +21,20 @@ namespace WalletWasabi.Crypto
 
 		public static string Encrypt(string plainText, string passPhrase)
 		{
-			// Salt is randomly generated each time, but is preprended to encrypted cipher text
+			// Salt is randomly generated each time, but is prepended to encrypted cipher text
 			// so that the same Salt value can be used when decrypting.
 			byte[] salt = Generate128BitsOfRandomEntropy();
-			byte[] iv = null;
-			byte[] cipherTextBytes = null;
-			byte[] key = null;
+
+			using var aes = CreateAES();
+			byte[] cipherTextBytes;
+			byte[] key;
 			var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
 
 			using (var password = new Rfc2898DeriveBytes(passPhrase, salt, DerivationIterations))
 			{
 				key = password.GetBytes(KeySize / 8);
-				using var aes = CreateAES();
 				aes.GenerateIV();
-				iv = aes.IV;
-				using var encryptor = aes.CreateEncryptor(key, iv);
+				using var encryptor = aes.CreateEncryptor(key, aes.IV);
 				using var memoryStream = new MemoryStream();
 				using (var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write))
 				{
@@ -49,10 +50,10 @@ namespace WalletWasabi.Crypto
 				using (var writer = new BinaryWriter(memoryStream))
 				{
 					writer.Write(salt);
-					writer.Write(iv);
+					writer.Write(aes.IV);
 					using (var hmac = new HMACSHA256(key))
 					{
-						var authenticationCode = hmac.ComputeHash(iv.Concat(cipherTextBytes).ToArray());
+						var authenticationCode = hmac.ComputeHash(aes.IV.Concat(cipherTextBytes).ToArray());
 						writer.Write(authenticationCode);
 					}
 					writer.Write(cipherTextBytes);
@@ -68,8 +69,8 @@ namespace WalletWasabi.Crypto
 		public static string Decrypt(string cipherText, string passPhrase)
 		{
 			var cipherTextBytesWithSaltAndIv = Convert.FromBase64String(cipherText);
-			byte[] key = null;
-			byte[] iv = null;
+			byte[] key;
+			byte[] iv;
 
 			using var memoryStream = new MemoryStream(cipherTextBytesWithSaltAndIv);
 			var cipherLength = 0;
