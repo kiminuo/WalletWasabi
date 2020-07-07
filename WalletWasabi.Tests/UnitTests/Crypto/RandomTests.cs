@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -12,7 +14,7 @@ namespace WalletWasabi.Tests.UnitTests.Crypto
 		[Fact]
 		public void BasicTests()
 		{
-			// Make sure byte array comparision works within hashset and that the underlying API won't pull the floor out.
+			// Make sure byte array comparison works within hashset and that the underlying API won't pull the floor out.
 			var byteArray = new byte[] { 1, 2, 3 };
 			var sameByteArray = new byte[] { 1, 2, 3 };
 			var differentByteArray = new byte[] { 4, 5, 6 };
