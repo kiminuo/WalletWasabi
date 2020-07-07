@@ -1,11 +1,21 @@
+#nullable enable
+
 using System;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace WalletWasabi.Helpers
 {
+	/// <summary>
+	/// Computes SHA-256 hashes.
+	/// </summary>
 	public static class HashHelpers
 	{
+		/// <summary>
+		/// Computes SHA-256 hash for UTF-8 encoded string.
+		/// </summary>
+		/// <param name="input">Input string.</param>
+		/// <returns>Hexadecimal string with upper-case letters.</returns>
 		public static string GenerateSha256Hash(string input)
 		{
 			using var sha256 = SHA256.Create();
@@ -14,6 +24,11 @@ namespace WalletWasabi.Helpers
 			return ByteHelpers.ToHex(hash);
 		}
 
+		/// <summary>
+		/// Computes SHA-256 hash.
+		/// </summary>
+		/// <param name="input">Input byte array.</param>
+		/// <returns>Hash bytes.</returns>
 		public static byte[] GenerateSha256Hash(byte[] input)
 		{
 			using var sha256 = SHA256.Create();
@@ -23,8 +38,11 @@ namespace WalletWasabi.Helpers
 		}
 
 		/// <summary>
-		/// https://stackoverflow.com/a/468084/2061103
+		/// Computes hash code from a byte array.
+		///
+		/// <para>Implementation based on the StackOverflow answer.</para>
 		/// </summary>
+		/// <see href="https://stackoverflow.com/a/468084/2061103"/>
 		public static int ComputeHashCode(params byte[] data)
 		{
 			unchecked
