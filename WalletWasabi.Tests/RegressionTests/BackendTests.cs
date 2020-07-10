@@ -99,14 +99,12 @@ namespace WalletWasabi.Tests.RegressionTests
 			var tx = await rpc.GetRawTransactionAsync(utxo.OutPoint.Hash);
 			var content = new StringContent($"'{tx.ToHex()}'", Encoding.UTF8, "application/json");
 
-			Logger.TurnOff();
-			using (var client = new TorHttpClient(new Uri(RegTestFixture.BackendEndPoint), null))
-			using (var response = await client.SendAsync(HttpMethod.Post, $"/api/v{Constants.BackendMajorVersion}/btc/blockchain/broadcast", content))
-			{
+			Logger.DisableTemporarily(async () => {
+				using var client = new TorHttpClient(new Uri(RegTestFixture.BackendEndPoint), null);
+				using var response = await client.SendAsync(HttpMethod.Post, $"/api/v{Constants.BackendMajorVersion}/btc/blockchain/broadcast", content);
 				Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 				Assert.Equal("Transaction is already in the blockchain.", await response.Content.ReadAsJsonAsync<string>());
-			}
-			Logger.TurnOn();
+			});
 		}
 
 		[Fact]
@@ -116,15 +114,14 @@ namespace WalletWasabi.Tests.RegressionTests
 
 			var content = new StringContent($"''", Encoding.UTF8, "application/json");
 
-			Logger.TurnOff();
-			using (var client = new TorHttpClient(new Uri(RegTestFixture.BackendEndPoint), null))
-			using (var response = await client.SendAsync(HttpMethod.Post, $"/api/v{Constants.BackendMajorVersion}/btc/blockchain/broadcast", content))
+			Logger.DisableTemporarily(async () =>
 			{
+				using var client = new TorHttpClient(new Uri(RegTestFixture.BackendEndPoint), null);
+				using var response = await client.SendAsync(HttpMethod.Post, $"/api/v{Constants.BackendMajorVersion}/btc/blockchain/broadcast", content);
 				Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
 				Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 				Assert.Equal("Invalid hex.", await response.Content.ReadAsJsonAsync<string>());
-			}
-			Logger.TurnOn();
+			});
 		}
 
 		[Fact]

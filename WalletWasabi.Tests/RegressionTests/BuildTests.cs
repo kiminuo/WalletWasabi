@@ -324,7 +324,7 @@ namespace WalletWasabi.Tests.RegressionTests
 					{
 						throw ex;
 					}
-					return; // Occassionally this fails on Linux or OSX, I have no idea why.
+					return; // Occasionally this fails on Linux or OSX, I have no idea why.
 				}
 				// Spend the inputs of the tx so we know
 				var success = bitcoinStore.TransactionStore.TryGetTransaction(fundingTxId, out SmartTransaction invalidSmartTransaction);

@@ -40,9 +40,8 @@ namespace WalletWasabi.Tests.UnitTests
 
 			var sameManager = new KeyManager(manager.EncryptedSecret, manager.ChainCode, manager.MasterFingerprint, manager.ExtPubKey, true, null, new BlockchainState());
 			var sameManager2 = new KeyManager(manager.EncryptedSecret, manager.ChainCode, password);
-			Logger.TurnOff();
+
 			Assert.Throws<SecurityException>(() => new KeyManager(manager.EncryptedSecret, manager.ChainCode, "differentPassword"));
-			Logger.TurnOn();
 
 			Assert.Equal(manager.ChainCode, sameManager.ChainCode);
 			Assert.Equal(manager.EncryptedSecret, sameManager.EncryptedSecret);
@@ -107,9 +106,7 @@ namespace WalletWasabi.Tests.UnitTests
 			var filePath = Path.Combine(Global.Instance.DataDir, EnvironmentHelpers.GetCallerFileName(), EnvironmentHelpers.GetMethodName(), "Wallet.json");
 			DeleteFileAndDirectoryIfExists(filePath);
 
-			Logger.TurnOff();
 			Assert.Throws<FileNotFoundException>(() => KeyManager.FromFile(filePath));
-			Logger.TurnOn();
 
 			var manager = KeyManager.CreateNew(out _, password, filePath);
 			KeyManager.FromFile(filePath);

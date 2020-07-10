@@ -71,42 +71,42 @@ namespace WalletWasabi.Tests.RegressionTests
 		{
 			(string password, IRPCClient rpc, Network network, Coordinator coordinator, ServiceConfiguration serviceConfiguration, BitcoinStore bitcoinStore, Backend.Global global) = await Common.InitializeTestEnvironmentAsync(RegTestFixture, 1);
 
-			Logger.TurnOff(); // turn off at the end, otherwise, the tests logs would have of warnings
-
-			var bestBlockHash = await rpc.GetBestBlockHashAsync();
-			var bestBlock = await rpc.GetBlockAsync(bestBlockHash);
-			var coinbaseTxId = bestBlock.Transactions[0].GetHash();
-			var offchainTxId = network.Consensus.ConsensusFactory.CreateTransaction().GetHash();
-			var mempoolTxId = await rpc.SendToAddressAsync(new Key().PubKey.GetSegwitAddress(network), Money.Coins(1));
-
-			var folder = Common.GetWorkDir();
-			await IoHelpers.DeleteRecursivelyWithMagicDustAsync(folder);
-			Directory.CreateDirectory(folder);
-			var cjfile = Path.Combine(folder, $"CoinJoins{network}.txt");
-			File.WriteAllLines(cjfile, new[] { coinbaseTxId.ToString(), offchainTxId.ToString(), mempoolTxId.ToString() });
-
-			using (var coordinatorToTest = new Coordinator(network, global.HostedServices.FirstOrDefault<BlockNotifier>(), folder, rpc, coordinator.RoundConfig))
+			// turn off at the end, otherwise, the tests logs would have of warnings
+			Logger.DisableTemporarily(async () =>
 			{
-				var txIds = await File.ReadAllLinesAsync(cjfile);
+				var bestBlockHash = await rpc.GetBestBlockHashAsync();
+				var bestBlock = await rpc.GetBlockAsync(bestBlockHash);
+				var coinbaseTxId = bestBlock.Transactions[0].GetHash();
+				var offchainTxId = network.Consensus.ConsensusFactory.CreateTransaction().GetHash();
+				var mempoolTxId = await rpc.SendToAddressAsync(new Key().PubKey.GetSegwitAddress(network), Money.Coins(1));
 
-				Assert.Contains(coinbaseTxId.ToString(), txIds);
-				Assert.Contains(mempoolTxId.ToString(), txIds);
-				Assert.DoesNotContain(offchainTxId.ToString(), txIds);
-
+				var folder = Common.GetWorkDir();
 				await IoHelpers.DeleteRecursivelyWithMagicDustAsync(folder);
 				Directory.CreateDirectory(folder);
-				File.WriteAllLines(cjfile, new[] { coinbaseTxId.ToString(), "This line is invalid (the file is corrupted)", offchainTxId.ToString() });
+				var cjfile = Path.Combine(folder, $"CoinJoins{network}.txt");
+				File.WriteAllLines(cjfile, new[] { coinbaseTxId.ToString(), offchainTxId.ToString(), mempoolTxId.ToString() });
 
-				var coordinatorToTest2 = new Coordinator(network, global.HostedServices.FirstOrDefault<BlockNotifier>(), folder, rpc, coordinatorToTest.RoundConfig);
-				coordinatorToTest2?.Dispose();
-				txIds = await File.ReadAllLinesAsync(cjfile);
-				Assert.Single(txIds);
-				Assert.Contains(coinbaseTxId.ToString(), txIds);
-				Assert.DoesNotContain(offchainTxId.ToString(), txIds);
-				Assert.DoesNotContain("This line is invalid (the file is corrupted)", txIds);
-			}
+				using (var coordinatorToTest = new Coordinator(network, global.HostedServices.FirstOrDefault<BlockNotifier>(), folder, rpc, coordinator.RoundConfig))
+				{
+					var txIds = await File.ReadAllLinesAsync(cjfile);
 
-			Logger.TurnOn();
+					Assert.Contains(coinbaseTxId.ToString(), txIds);
+					Assert.Contains(mempoolTxId.ToString(), txIds);
+					Assert.DoesNotContain(offchainTxId.ToString(), txIds);
+
+					await IoHelpers.DeleteRecursivelyWithMagicDustAsync(folder);
+					Directory.CreateDirectory(folder);
+					File.WriteAllLines(cjfile, new[] { coinbaseTxId.ToString(), "This line is invalid (the file is corrupted)", offchainTxId.ToString() });
+
+					var coordinatorToTest2 = new Coordinator(network, global.HostedServices.FirstOrDefault<BlockNotifier>(), folder, rpc, coordinatorToTest.RoundConfig);
+					coordinatorToTest2?.Dispose();
+					txIds = await File.ReadAllLinesAsync(cjfile);
+					Assert.Single(txIds);
+					Assert.Contains(coinbaseTxId.ToString(), txIds);
+					Assert.DoesNotContain(offchainTxId.ToString(), txIds);
+					Assert.DoesNotContain("This line is invalid (the file is corrupted)", txIds);
+				}
+			});
 		}
 
 		[Fact]

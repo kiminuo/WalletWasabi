@@ -25,9 +25,8 @@ namespace WalletWasabi.Tests.UnitTests
 			{
 				var original = pairs.Key;
 				var desired = pairs.Value;
-				Logger.TurnOff();
+
 				var results = PasswordHelper.GetPossiblePasswords(original);
-				Logger.TurnOn();
 				var foundCorrectPassword = false;
 
 				foreach (var pw in results)
@@ -52,34 +51,33 @@ namespace WalletWasabi.Tests.UnitTests
 			// Creating a wallet with buggy password.
 			var keyManager = KeyManager.CreateNew(out _, Guard.Correct(buggy)); // Every wallet was created with Guard.Correct before.
 
-			Logger.TurnOff();
+			Logger.DisableTemporarily(() =>
+			{
+				// Password will be trimmed inside.
+				PasswordHelper.GetMasterExtKey(keyManager, original, out _);
 
-			// Password will be trimmed inside.
-			PasswordHelper.GetMasterExtKey(keyManager, original, out _);
+				// This should not throw format exception but password is not correct.
+				Assert.Throws<SecurityException>(() => PasswordHelper.GetMasterExtKey(keyManager, RandomString.Generate(PasswordHelper.MaxPasswordLength), out _));
 
-			// This should not throw format exception but pw is not correct.
-			Assert.Throws<SecurityException>(() => PasswordHelper.GetMasterExtKey(keyManager, RandomString.Generate(PasswordHelper.MaxPasswordLength), out _));
+				// Password should be formatted, before entering here.
+				Assert.Throws<FormatException>(() => PasswordHelper.GetMasterExtKey(keyManager, RandomString.Generate(PasswordHelper.MaxPasswordLength + 1), out _));
 
-			// Password should be formatted, before entering here.
-			Assert.Throws<FormatException>(() => PasswordHelper.GetMasterExtKey(keyManager, RandomString.Generate(PasswordHelper.MaxPasswordLength + 1), out _));
+				// Too long password with extra spaces.
+				var badPassword = $"   {RandomString.Generate(PasswordHelper.MaxPasswordLength + 1)}   ";
 
-			// Too long password with extra spaces.
-			var badPassword = $"   {RandomString.Generate(PasswordHelper.MaxPasswordLength + 1)}   ";
+				// Password should be formatted, before entering here.
+				Assert.Throws<FormatException>(() => PasswordHelper.GetMasterExtKey(keyManager, badPassword, out _));
 
-			// Password should be formatted, before entering here.
-			Assert.Throws<FormatException>(() => PasswordHelper.GetMasterExtKey(keyManager, badPassword, out _));
+				Assert.True(PasswordHelper.IsTrimable(badPassword, out badPassword));
 
-			Assert.True(PasswordHelper.IsTrimable(badPassword, out badPassword));
+				// Still too long.
+				Assert.Throws<FormatException>(() => PasswordHelper.GetMasterExtKey(keyManager, badPassword, out _));
 
-			// Still too long.
-			Assert.Throws<FormatException>(() => PasswordHelper.GetMasterExtKey(keyManager, badPassword, out _));
+				Assert.True(PasswordHelper.IsTooLong(badPassword, out badPassword));
 
-			Assert.True(PasswordHelper.IsTooLong(badPassword, out badPassword));
-
-			// This should not throw format exception but pw is not correct.
-			Assert.Throws<SecurityException>(() => PasswordHelper.GetMasterExtKey(keyManager, badPassword, out _));
-
-			Logger.TurnOn();
+				// This should not throw format exception but password is not correct.
+				Assert.Throws<SecurityException>(() => PasswordHelper.GetMasterExtKey(keyManager, badPassword, out _));
+			});
 		}
 
 		[Fact]
@@ -97,18 +95,19 @@ namespace WalletWasabi.Tests.UnitTests
 
 			Assert.True(PasswordHelper.IsTrimable(original, out original));
 
-			Logger.TurnOff();
-			Assert.False(PasswordHelper.TryPassword(keyManager, "falsepassword", out _));
+			Logger.DisableTemporarily(() =>
+			{
+				Assert.False(PasswordHelper.TryPassword(keyManager, "falsePassword", out _));
 
-			// This should pass
-			Assert.NotNull(PasswordHelper.GetMasterExtKey(keyManager, original, out _));
+				// This should pass
+				Assert.NotNull(PasswordHelper.GetMasterExtKey(keyManager, original, out _));
 
-			Assert.True(PasswordHelper.TryPassword(keyManager, buggy, out string compatiblePasswordNotUsed));
-			Assert.Null(compatiblePasswordNotUsed);
+				Assert.True(PasswordHelper.TryPassword(keyManager, buggy, out string compatiblePasswordNotUsed));
+				Assert.Null(compatiblePasswordNotUsed);
 
-			Assert.True(PasswordHelper.TryPassword(keyManager, original, out string compatiblePassword));
-			Assert.Equal(buggy, compatiblePassword);
-			Logger.TurnOn();
+				Assert.True(PasswordHelper.TryPassword(keyManager, original, out string compatiblePassword));
+				Assert.Equal(buggy, compatiblePassword);
+			});
 		}
 
 		[Fact]
@@ -117,10 +116,8 @@ namespace WalletWasabi.Tests.UnitTests
 			string emptyPw = "";
 			string nullPw = null;
 
-			Logger.TurnOff();
 			var emptyPws = PasswordHelper.GetPossiblePasswords(emptyPw);
 			var nullPws = PasswordHelper.GetPossiblePasswords(nullPw);
-			Logger.TurnOn();
 
 			var emptyPwRes = Assert.Single(emptyPws);
 			var nullPwRes = Assert.Single(nullPws);

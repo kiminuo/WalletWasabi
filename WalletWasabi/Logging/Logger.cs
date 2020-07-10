@@ -107,9 +107,35 @@ namespace WalletWasabi.Logging
 
 		#region Methods
 
-		public static void TurnOff() => Interlocked.Exchange(ref On, 0);
+		/// <summary>
+		/// Return original value of <see cref="On"/> state variable.
+		/// </summary>
+		public static long TurnOff() => Interlocked.Exchange(ref On, 0);
 
-		public static void TurnOn() => Interlocked.Exchange(ref On, 1);
+		/// <summary>
+		/// Return original value of <see cref="On"/> state variable.
+		/// </summary>
+		public static long TurnOn() => Interlocked.Exchange(ref On, 1);
+
+		/// <summary>
+		/// Turns off the logger for the duration of <paramref name="action"/>, if the logger was actually enabled at the start.
+		/// </summary>
+		public static void DisableTemporarily(Action action)
+		{
+			var previousState = TurnOff();
+
+			try
+			{
+				action.Invoke();
+			}
+			finally
+			{
+				if (previousState == 1)
+				{
+					TurnOn();
+				}
+			}
+		}
 
 		public static bool IsOn() => Interlocked.Read(ref On) == 1;
 

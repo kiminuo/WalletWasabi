@@ -39,9 +39,8 @@ namespace WalletWasabi.Tests.UnitTests.Crypto
 			Assert.NotEqual(toEncrypt, encypted);
 			decrypted = StringCipher.Decrypt(encypted, password);
 			Assert.Equal(toEncrypt, decrypted);
-			Logger.TurnOff();
+
 			Assert.Throws<CryptographicException>(() => StringCipher.Decrypt(encypted, "wrongpassword"));
-			Logger.TurnOn();
 		}
 
 		[Fact]
