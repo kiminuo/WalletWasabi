@@ -30,11 +30,14 @@ namespace WalletWasabi.Gui
 			bool runGui = false;
 			try
 			{
-				Global = CreateGlobal();
+				string dataDir = EnvironmentHelpers.GetUserDataDirOrDefault(args, Path.Combine("WalletWasabi", "Client"));
+				Directory.CreateDirectory(dataDir);
+
+				Global = CreateGlobal(dataDir);
 
 				Locator.CurrentMutable.RegisterConstant(Global);
 
-				Platform.BaseDirectory = Path.Combine(Global.DataDir, "Gui");
+				Platform.BaseDirectory = Path.Combine(dataDir, "Gui");
 				AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 				TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
 
@@ -65,10 +68,8 @@ namespace WalletWasabi.Gui
 			}
 		}
 
-		private static Global CreateGlobal()
+		private static Global CreateGlobal(string dataDir)
 		{
-			string dataDir = EnvironmentHelpers.GetDataDir(Path.Combine("WalletWasabi", "Client"));
-			Directory.CreateDirectory(dataDir);
 			string torLogsFile = Path.Combine(dataDir, "TorLogs.txt");
 
 			var uiConfig = new UiConfig(Path.Combine(dataDir, "UiConfig.json"));

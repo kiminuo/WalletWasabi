@@ -39,6 +39,13 @@ namespace WalletWasabi.Helpers
 		// appName, dataDir
 		private static ConcurrentDictionary<string, string> DataDirDict { get; } = new ConcurrentDictionary<string, string>();
 
+		public static string GetUserDataDirOrDefault(string[] args, string appName)
+		{
+			return (args.Length > 0 && args[0].StartsWith("--datadir="))
+				? args[0]["--datadir=".Length..]
+				: GetDataDir(appName);
+		}
+
 		// Do not change the output of this function. Backwards compatibility depends on it.
 		public static string GetDataDir(string appName)
 		{
