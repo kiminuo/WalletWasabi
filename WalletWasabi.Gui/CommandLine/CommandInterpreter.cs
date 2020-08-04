@@ -1,3 +1,4 @@
+using DynamicData;
 using Mono.Options;
 using System;
 using System.IO;
@@ -9,17 +10,19 @@ namespace WalletWasabi.Gui.CommandLine
 {
 	public class CommandInterpreter
 	{
-		public CommandInterpreter(TextWriter outW, TextWriter errorW)
+		public CommandInterpreter(TextWriter outW, TextWriter errorW, params Command[] commands)
 		{
 			Out = outW;
 			Error = errorW;
+			Commands = commands;
 		}
 
 		private TextWriter Out { get; }
 		private TextWriter Error { get; }
+		private Command[] Commands { get; }
 
 		/// <returns>If the GUI should run or not.</returns>
-		public async Task<bool> ExecuteCommandsAsync(string[] args, Command mixerCommand, Command passwordFinderCommand, Command crashReportedCommand)
+		public async Task<bool> ExecuteCommandsAsync(string[] args)
 		{
 			var showHelp = false;
 			var showVersion = false;
@@ -39,10 +42,9 @@ namespace WalletWasabi.Gui.CommandLine
 				"",
 				"Available commands are:",
 				"",
-				mixerCommand,
-				passwordFinderCommand,
-				crashReportedCommand
 			};
+
+			suite.AddRange(Commands);
 
 			EnsureBackwardCompatibilityWithOldParameters(ref args);
 			if (await suite.RunAsync(args) == 0)

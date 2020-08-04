@@ -22,6 +22,7 @@ namespace WalletWasabi.Gui
 	internal class Program
 	{
 		private static Global Global;
+		private static CrashReporter CrashReporter = new CrashReporter();
 
 		/// Warning! In Avalonia applications Main must not be async. Otherwise application may not run on OSX.
 		/// see https://github.com/AvaloniaUI/Avalonia/wiki/Unresolved-platform-support-issues
@@ -31,6 +32,7 @@ namespace WalletWasabi.Gui
 			try
 			{
 				Global = CreateGlobal();
+				CommandInterpreter interpreter = CreateCommandInterpreter(Global, CrashReporter);
 
 				Locator.CurrentMutable.RegisterConstant(Global);
 
@@ -38,9 +40,9 @@ namespace WalletWasabi.Gui
 				AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 				TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
 
-				runGui = ShouldRunGui(args);
+				runGui = ShouldRunGui(interpreter, args);
 
-				if (Global.CrashReporter.IsReport)
+				if (CrashReporter.IsReport)
 				{
 					StartCrashReporter(args);
 					return;
@@ -56,7 +58,7 @@ namespace WalletWasabi.Gui
 			catch (Exception ex)
 			{
 				Logger.LogCritical(ex);
-				Global.CrashReporter.SetException(ex);
+				CrashReporter.SetException(ex);
 				throw;
 			}
 			finally
@@ -81,16 +83,19 @@ namespace WalletWasabi.Gui
 			return new Global(dataDir, torLogsFile, config, uiConfig, walletManager);
 		}
 
-		private static bool ShouldRunGui(string[] args)
+		private static CommandInterpreter CreateCommandInterpreter(Global global, CrashReporter crashReporter)
 		{
-			var daemon = new Daemon(Global);
-			var interpreter = new CommandInterpreter(Console.Out, Console.Error);
-			var executionTask = interpreter.ExecuteCommandsAsync(
-				args,
-				new MixerCommand(daemon),
-				new PasswordFinderCommand(Global.WalletManager),
-				new CrashReportCommand(Global.CrashReporter));
-			return executionTask.GetAwaiter().GetResult();
+			return new CommandInterpreter(
+				Console.Out, Console.Error,
+				new MixerCommand(new Daemon(global)),
+				new PasswordFinderCommand(global.WalletManager),
+				new CrashReportCommand(crashReporter)
+			);
+		}
+
+		private static bool ShouldRunGui(CommandInterpreter interpreter, string[] args)
+		{
+			return interpreter.ExecuteCommandsAsync(args).GetAwaiter().GetResult();
 		}
 
 		private static void SetTheme() => AvalonStudio.Extensibility.Theme.ColorTheme.LoadTheme(AvalonStudio.Extensibility.Theme.ColorTheme.VisualStudioDark);
@@ -114,7 +119,7 @@ namespace WalletWasabi.Gui
 				if (!(ex is OperationCanceledException))
 				{
 					Logger.LogCritical(ex);
-					Global.CrashReporter.SetException(ex);
+					CrashReporter.SetException(ex);
 				}
 
 				await DisposeAsync();
@@ -132,10 +137,10 @@ namespace WalletWasabi.Gui
 				MainWindowViewModel.Instance.Dispose();
 			}
 
-			if (Global?.CrashReporter?.IsInvokeRequired is true)
+			if (CrashReporter.IsInvokeRequired is true)
 			{
 				// Trigger the CrashReport process.
-				Global.CrashReporter.TryInvokeCrashReport();
+				CrashReporter.TryInvokeCrashReport();
 			}
 
 			if (Global is { } global)
@@ -164,7 +169,7 @@ namespace WalletWasabi.Gui
 
 		private static void StartCrashReporter(string[] args)
 		{
-			var result = AppBuilder.Configure<CrashReportApp>().UseReactiveUI();
+			AppBuilder result = AppBuilder.Configure<CrashReportApp>().UseReactiveUI();
 
 			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 			{
