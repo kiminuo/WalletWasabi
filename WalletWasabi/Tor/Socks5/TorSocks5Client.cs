@@ -62,8 +62,7 @@ namespace WalletWasabi.Tor.Socks5
 				}
 				catch (Exception ex) when (IsConnectionRefused(ex))
 				{
-					throw new ConnectionException(
-						$"Could not connect to Tor SOCKSPort at {host}:{port}. Is Tor running?", ex);
+					throw new ConnectionException($"Could not connect to Tor SOCKSPort at {host}:{port}. Is Tor running?", ex);
 				}
 
 				Stream = TcpClient.GetStream();
@@ -149,7 +148,7 @@ namespace WalletWasabi.Tor.Socks5
 				sendBuffer = usernamePasswordRequest.ToBytes();
 
 				Array.Clear(receiveBuffer, 0, receiveBuffer.Length);
-				receiveBuffer = await SendAsync(sendBuffer, 2).ConfigureAwait(false);
+				receiveBuffer = await SendAsync(sendBuffer, receiveBufferSize: 2).ConfigureAwait(false);
 
 				var userNamePasswordResponse = new UsernamePasswordResponse();
 				userNamePasswordResponse.FromBytes(receiveBuffer);
@@ -297,10 +296,10 @@ namespace WalletWasabi.Tor.Socks5
 		}
 
 		/// <summary>
-		/// Sends bytes to the Tor Socks5 connection
+		/// Sends bytes to the Tor Socks5 connection.
 		/// </summary>
-		/// <param name="sendBuffer">Sent data</param>
-		/// <param name="receiveBufferSize">Maximum number of bytes expected to be received in the reply</param>
+		/// <param name="sendBuffer">Data to send.</param>
+		/// <param name="receiveBufferSize">The maximum number of bytes to read from the reply.</param>
 		/// <returns>Reply</returns>
 		public async Task<byte[]> SendAsync(byte[] sendBuffer, int? receiveBufferSize = null)
 		{
@@ -318,12 +317,9 @@ namespace WalletWasabi.Tor.Socks5
 					await stream.WriteAsync(sendBuffer, 0, sendBuffer.Length).ConfigureAwait(false);
 					await stream.FlushAsync().ConfigureAwait(false);
 
-					// If receiveBufferSize is null, zero or negative or bigger than TcpClient.ReceiveBufferSize
-					// then work with TcpClient.ReceiveBufferSize
-					var tcpReceiveBuffSize = TcpClient.ReceiveBufferSize;
-					var actualReceiveBufferSize = receiveBufferSize is null || receiveBufferSize <= 0 || receiveBufferSize > tcpReceiveBuffSize
-						? tcpReceiveBuffSize
-						: (int)receiveBufferSize;
+					int actualReceiveBufferSize = receiveBufferSize is null
+						? TcpClient.ReceiveBufferSize
+						: receiveBufferSize.Value;
 
 					// Receive the response
 					var receiveBuffer = new byte[actualReceiveBufferSize];
@@ -334,6 +330,7 @@ namespace WalletWasabi.Tor.Socks5
 					{
 						throw new ConnectionException($"Not connected to Tor SOCKS5 proxy: {TorSocks5EndPoint}.");
 					}
+
 					// if we could fit everything into our buffer, then return it
 					if (!stream.DataAvailable)
 					{
