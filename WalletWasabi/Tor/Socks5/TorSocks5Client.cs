@@ -155,7 +155,6 @@ namespace WalletWasabi.Tor.Socks5
 				var passwd = new PasswdField(password: identity);
 				var usernamePasswordRequest = new UsernamePasswordRequest(uName, passwd);
 
-				Array.Clear(receiveBuffer, 0, receiveBuffer.Length);
 				receiveBuffer = await SendRequestAsync(usernamePasswordRequest, cancellationToken).ConfigureAwait(false);
 
 				var userNamePasswordResponse = new UsernamePasswordResponse(receiveBuffer);
