@@ -36,9 +36,11 @@ namespace WalletWasabi.Tests.IntegrationTests
 		[Fact]
 		public async Task CanRequestChunkEncodedAsync()
 		{
+			using CancellationTokenSource ctsTimeout = new(TimeSpan.FromMinutes(2));
+
 			using var client = MakeTorHttpClient(new Uri("http://anglesharp.azurewebsites.net/"));
-			var response = await client.SendAsync(HttpMethod.Get, "Chunked");
-			var content = await response.Content.ReadAsStringAsync();
+			var response = await client.SendAsync(HttpMethod.Get, "Chunked", null, ctsTimeout.Token);
+			var content = await response.Content.ReadAsStringAsync(ctsTimeout.Token);
 			Assert.Contains("Chunked transfer encoding test", content);
 			Assert.Contains("This is a chunked response after 100 ms.", content);
 			Assert.Contains("This is a chunked response after 1 second. The server should not close the stream before all chunks are sent to a client.", content);
