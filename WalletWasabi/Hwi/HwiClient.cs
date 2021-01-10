@@ -28,8 +28,8 @@ namespace WalletWasabi.Hwi
 
 		#region PropertiesAndMembers
 
-		public Network Network { get; }
-		public IHwiProcessInvoker Bridge { get; }
+		private Network Network { get; }
+		private IHwiProcessInvoker Bridge { get; }
 
 		#endregion PropertiesAndMembers
 
@@ -71,7 +71,8 @@ namespace WalletWasabi.Hwi
 				IEnumerable<HwiEnumerateEntry> hwiEntries = await EnumerateAsync(cancel, isRecursion: true).ConfigureAwait(false);
 
 				// Trezor T won't give Fingerprint info so we'll assume that the first device that doesn't give fingerprint is what we need.
-				HwiEnumerateEntry firstNoFingerprintEntry = hwiEntries.Where(x => x.Fingerprint is null).FirstOrDefault();
+				HwiEnumerateEntry? firstNoFingerprintEntry = hwiEntries.Where(x => x.Fingerprint is null).FirstOrDefault();
+
 				if (firstNoFingerprintEntry is null)
 				{
 					throw;
@@ -99,7 +100,7 @@ namespace WalletWasabi.Hwi
 		public async Task PromptPinAsync(HDFingerprint fingerprint, CancellationToken cancel)
 			=> await PromptPinImplAsync(null, null, fingerprint, cancel).ConfigureAwait(false);
 
-		private async Task PromptPinImplAsync(HardwareWalletModels? deviceType, string devicePath, HDFingerprint? fingerprint, CancellationToken cancel)
+		private async Task PromptPinImplAsync(HardwareWalletModels? deviceType, string? devicePath, HDFingerprint? fingerprint, CancellationToken cancel)
 		{
 			await SendCommandAsync(
 				options: BuildOptions(deviceType, devicePath, fingerprint),
@@ -275,8 +276,6 @@ namespace WalletWasabi.Hwi
 
 		#endregion Commands
 
-		#region Helpers
-
 		private static void ThrowIfError(string responseString, IEnumerable<HwiOption> options, string arguments, int exitCode)
 		{
 			if (exitCode != 0)
@@ -294,44 +293,27 @@ namespace WalletWasabi.Hwi
 			}
 		}
 
-		private static HwiOption[] BuildOptions(HardwareWalletModels? deviceType, string devicePath, HDFingerprint? fingerprint, params HwiOption[] extraOptions)
+		internal static HwiOption[] BuildOptions(HardwareWalletModels? deviceType, string? devicePath, HDFingerprint? fingerprint, params HwiOption[] extraOptions)
 		{
-			var options = new List<HwiOption>();
+			List<HwiOption> options = new();
 
-			var hasDevicePath = devicePath is { };
-			var hasDeviceType = deviceType.HasValue;
-			var hasFingerprint = fingerprint.HasValue;
-
-			// Fingerprint and devicetype-devicepath pair cannot happen the same time.
-			var notSupportedExceptionMessage = $"Provide either {nameof(fingerprint)} or {nameof(devicePath)}-{nameof(deviceType)} pair, not both.";
-			if (hasDeviceType)
-			{
-				Guard.NotNull(nameof(devicePath), devicePath);
-				if (hasFingerprint)
-				{
-					throw new NotSupportedException(notSupportedExceptionMessage);
-				}
-			}
-			if (hasFingerprint)
-			{
-				if (hasDevicePath || hasDeviceType)
-				{
-					throw new NotSupportedException(notSupportedExceptionMessage);
-				}
-			}
-
-			if (hasDevicePath)
-			{
-				options.Add(HwiOption.DevicePath(devicePath));
-			}
-			if (hasDeviceType)
-			{
-				options.Add(HwiOption.DeviceType(deviceType.Value));
-			}
-			if (hasFingerprint)
+			// Fingerprint and deviceType-devicePath pair cannot happen the same time.
+			if (fingerprint.HasValue && !(deviceType.HasValue && devicePath is not null))
 			{
 				options.Add(HwiOption.Fingerprint(fingerprint.Value));
 			}
+			else if (!fingerprint.HasValue && deviceType.HasValue)
+			{
+				Guard.NotNull(nameof(devicePath), devicePath);
+
+				options.Add(HwiOption.DevicePath(devicePath!));
+				options.Add(HwiOption.DeviceType(deviceType.Value));
+			}
+			else
+			{
+				throw new NotSupportedException($"Provide either {nameof(fingerprint)} or {nameof(devicePath)}-{nameof(deviceType)} pair, not both.");
+			}
+
 			foreach (var opt in extraOptions)
 			{
 				options.Add(opt);
@@ -339,7 +321,5 @@ namespace WalletWasabi.Hwi
 
 			return options.ToArray();
 		}
-
-		#endregion Helpers
 	}
 }
