@@ -5,22 +5,21 @@ using WalletWasabi.Hwi.Parsers;
 
 namespace WalletWasabi.Hwi.Models
 {
+	/// <seealso href="https://github.com/bitcoin-core/HWI/blob/1b1596ac6f4fb1ce47a0d1ca7feb1fc553d08e09/hwilib/cli.py#L118">Available arguments.</seealso>
 	public class HwiOption : IEquatable<HwiOption>
 	{
+		public static readonly HwiOption Debug = new HwiOption(HwiOptions.Debug);
+		public static readonly HwiOption Help = new HwiOption(HwiOptions.Help);
+		public static readonly HwiOption Interactive = new HwiOption(HwiOptions.Interactive);
+		public static readonly HwiOption TestNet = new HwiOption(HwiOptions.TestNet);
+		public static readonly HwiOption Version = new HwiOption(HwiOptions.Version);
+		public static readonly HwiOption StdIn = new HwiOption(HwiOptions.StdIn);
+
 		private HwiOption(HwiOptions type, string? argument = null)
 		{
 			Type = type;
 			Arguments = argument;
 		}
-
-		public static HwiOption Debug => new HwiOption(HwiOptions.Debug);
-
-		public static HwiOption Help => new HwiOption(HwiOptions.Help);
-		public static HwiOption Interactive => new HwiOption(HwiOptions.Interactive);
-
-		public static HwiOption TestNet => new HwiOption(HwiOptions.TestNet);
-		public static HwiOption Version => new HwiOption(HwiOptions.Version);
-		public static HwiOption StdIn => new HwiOption(HwiOptions.StdIn);
 
 		public HwiOptions Type { get; }
 		public string? Arguments { get; }
@@ -37,8 +36,6 @@ namespace WalletWasabi.Hwi.Models
 
 		public static HwiOption Password(string password) => new HwiOption(HwiOptions.Password, password);
 
-		#region Equality
-
 		public override bool Equals(object? obj) => Equals(obj as HwiOption);
 
 		public bool Equals(HwiOption? other) => this == other;
@@ -48,7 +45,5 @@ namespace WalletWasabi.Hwi.Models
 		public static bool operator ==(HwiOption? x, HwiOption? y) => (x?.Type, x?.Arguments) == (y?.Type, y?.Arguments);
 
 		public static bool operator !=(HwiOption? x, HwiOption? y) => !(x == y);
-
-		#endregion Equality
 	}
 }
