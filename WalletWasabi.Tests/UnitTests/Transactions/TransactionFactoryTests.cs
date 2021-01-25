@@ -59,30 +59,43 @@ namespace WalletWasabi.Tests.UnitTests.Transactions
 		[Fact]
 		public void SelectMostPrivateIndependentlyOfCluster()
 		{
-			var transactionFactory = ServiceFactory.CreateTransactionFactory(new[]
+			for (int i = 0; i < 1000; i++)
 			{
-				("", 0, 0.08m, confirmed: true, anonymitySet: 50),
-				("", 1, 0.16m, confirmed: true, anonymitySet: 200)
-			});
+				var transactionFactory = ServiceFactory.CreateTransactionFactory(new[]
+				{
+					("", 0, 0.08m, confirmed: true, anonymitySet: 50),
+					("", 1, 0.16m, confirmed: true, anonymitySet: 200)
+				});
 
-			// There is a 0.08 coin with AS=50. However it selects the most private one with AS= 200
-			using Key key = new();
-			var destination = key.ScriptPubKey;
-			var payment = new PaymentIntent(destination, Money.Coins(0.07m), label: "Sophie");
-			var feeRate = new FeeRate(2m);
-			var result = transactionFactory.BuildTransaction(payment, feeRate);
+				// There is a 0.08 coin with AS=50. However it selects the most private one with AS= 200
+				using Key key = new();
+				var destination = key.ScriptPubKey;
+				var payment = new PaymentIntent(destination, Money.Coins(0.07m), label: "Sophie");
+				var feeRate = new FeeRate(2m);
+				BuildTransactionResult result = transactionFactory.BuildTransaction(payment, feeRate);
 
-			Assert.True(result.Signed);
-			var spentCoin = Assert.Single(result.SpentCoins);
-			Assert.Equal(Money.Coins(0.16m), spentCoin.Amount);
-			Assert.Equal(200, spentCoin.HdPubKey.AnonymitySet);
-			Assert.False(result.SpendsUnconfirmed);
-			var tx = result.Transaction.Transaction;
-			Assert.Equal(2, tx.Outputs.Count);
+				Assert.True(result.Signed);
+				var spentCoin = Assert.Single(result.SpentCoins);
 
-			var changeCoin = Assert.Single(result.InnerWalletOutputs);
-			Assert.True(changeCoin.HdPubKey.IsInternal);
-			Assert.Equal("Sophie", changeCoin.HdPubKey.Label);
+				if (spentCoin.Amount != Money.Coins(0.16m))
+				{
+					Assert.True(false);
+				}
+				else
+				{
+					Assert.True(true);
+				}
+
+				Assert.Equal(Money.Coins(0.16m), spentCoin.Amount);
+				Assert.Equal(200, spentCoin.HdPubKey.AnonymitySet);
+				Assert.False(result.SpendsUnconfirmed);
+				var tx = result.Transaction.Transaction;
+				Assert.Equal(2, tx.Outputs.Count);
+
+				var changeCoin = Assert.Single(result.InnerWalletOutputs);
+				Assert.True(changeCoin.HdPubKey.IsInternal);
+				Assert.Equal("Sophie", changeCoin.HdPubKey.Label);
+			}
 		}
 
 		[Fact]
