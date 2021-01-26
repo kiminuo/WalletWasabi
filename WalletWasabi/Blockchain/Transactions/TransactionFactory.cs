@@ -9,6 +9,7 @@ using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Blockchain.TransactionBuilding;
 using WalletWasabi.Blockchain.TransactionOutputs;
+using WalletWasabi.Blockchain.Transactions.Services;
 using WalletWasabi.Exceptions;
 using WalletWasabi.Helpers;
 using WalletWasabi.Logging;
@@ -67,7 +68,7 @@ namespace WalletWasabi.Blockchain.Transactions
 				throw new ArgumentOutOfRangeException($"{nameof(payments)}.{nameof(payments.TotalAmount)} sum cannot be smaller than 0 or greater than {Constants.MaximumNumberOfSatoshis}.");
 			}
 
-			List<SmartCoin> allowedSmartCoinInputs = GetAllowedCoinsToSpend(payments, allowedInputs);
+			List<SmartCoin> allowedSmartCoinInputs = SmartCoinSelectionStrategy.GetAllowedCoinsToSpend(Coins, payments, allowedInputs, AllowUnconfirmed);
 
 			// Get and calculate fee
 			Logger.LogInfo("Calculating dynamic transaction fee...");
@@ -272,47 +273,6 @@ namespace WalletWasabi.Blockchain.Transactions
 			Logger.LogInfo($"Transaction is successfully built: {tx.GetHash()}.");
 			var sign = !KeyManager.IsWatchOnly;
 			return new BuildTransactionResult(smartTransaction, psbt, sign, fee, feePc);
-		}
-
-		private List<SmartCoin> GetAllowedCoinsToSpend(PaymentIntent payments, IEnumerable<OutPoint>? allowedInputs)
-		{
-			// Get allowed coins to spend.
-			var availableCoinsView = Coins.Available();
-			List<SmartCoin> allowedSmartCoinInputs = AllowUnconfirmed // Inputs that can be used to build the transaction.
-					? availableCoinsView.ToList()
-					: availableCoinsView.Confirmed().ToList();
-			if (allowedInputs is { }) // If allowedInputs are specified then select the coins from them.
-			{
-				if (!allowedInputs.Any())
-				{
-					throw new ArgumentException($"{nameof(allowedInputs)} is not null, but empty.");
-				}
-
-				allowedSmartCoinInputs = allowedSmartCoinInputs
-					.Where(x => allowedInputs.Any(y => y.Hash == x.TransactionId && y.N == x.Index))
-					.ToList();
-
-				// Add those that have the same script, because common ownership is already exposed.
-				// But only if the user didn't click the "max" button. In this case he'd send more money than what he'd think.
-				if (payments.ChangeStrategy != ChangeStrategy.AllRemainingCustom)
-				{
-					var allScripts = allowedSmartCoinInputs.Select(x => x.ScriptPubKey).ToHashSet();
-					foreach (var coin in availableCoinsView.Where(x => !allowedSmartCoinInputs.Any(y => x.TransactionId == y.TransactionId && x.Index == y.Index)))
-					{
-						if (!(AllowUnconfirmed || coin.Confirmed))
-						{
-							continue;
-						}
-
-						if (allScripts.Contains(coin.ScriptPubKey))
-						{
-							allowedSmartCoinInputs.Add(coin);
-						}
-					}
-				}
-			}
-
-			return allowedSmartCoinInputs;
 		}
 
 		private PSBT TryNegotiatePayjoin(IPayjoinClient payjoinClient, TransactionBuilder builder, PSBT psbt, HdPubKey changeHdPubKey)
