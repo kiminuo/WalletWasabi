@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using WalletWasabi.Tor.Http.Helpers;
 using WalletWasabi.Tor.Http.Models;
+using WalletWasabi.Tor.Socks5.Exceptions;
 
 namespace WalletWasabi.Tor.Http.Extensions
 {
@@ -31,6 +32,11 @@ namespace WalletWasabi.Tor.Http.Extensions
 			//					[message - body]
 
 			string startLine = await HttpMessageHelper.ReadStartLineAsync(responseStream).ConfigureAwait(false);
+
+			if (startLine == "?")
+			{
+				throw new TorConnectionException("Invalid HTTP response.");
+			}
 
 			var statusLine = StatusLine.Parse(startLine);
 			var response = new HttpResponseMessage(statusLine.StatusCode);
