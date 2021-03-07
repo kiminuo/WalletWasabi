@@ -2,6 +2,12 @@
   "version": 1,
   "dependencies": {
     ".NETCoreApp,Version=v5.0": {
+      "Jab": {
+        "type": "Direct",
+        "requested": "[0.0.2-beta.67, )",
+        "resolved": "0.0.2-beta.67",
+        "contentHash": "R3RGHEX2QCSmVc6ZZLCyMqvcHcuHAZJUw6gwFyqKg1JOKAAU+RzvvTHyDF67GJOjd19HB+T5BojTqb11PIRwsw=="
+      },
       "Microsoft.AspNetCore.Mvc.NewtonsoftJson": {
         "type": "Direct",
         "requested": "[5.0.0, )",

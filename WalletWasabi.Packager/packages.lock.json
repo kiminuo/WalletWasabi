@@ -2,6 +2,11 @@
   "version": 1,
   "dependencies": {
     ".NETCoreApp,Version=v5.0": {
+      "Jab": {
+        "type": "Transitive",
+        "resolved": "0.0.2-beta.67",
+        "contentHash": "R3RGHEX2QCSmVc6ZZLCyMqvcHcuHAZJUw6gwFyqKg1JOKAAU+RzvvTHyDF67GJOjd19HB+T5BojTqb11PIRwsw=="
+      },
       "Microsoft.AspNetCore.JsonPatch": {
         "type": "Transitive",
         "resolved": "5.0.0",
@@ -276,6 +281,7 @@
       "walletwasabi": {
         "type": "Project",
         "dependencies": {
+          "Jab": "0.0.2-beta.67",
           "Microsoft.AspNetCore.Mvc.NewtonsoftJson": "5.0.0",
           "Microsoft.Win32.SystemEvents": "5.0.0",
           "NBitcoin": "5.0.73",

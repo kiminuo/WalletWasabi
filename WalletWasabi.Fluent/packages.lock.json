@@ -258,6 +258,11 @@
           "System.Reactive": "4.4.1"
         }
       },
+      "Jab": {
+        "type": "Transitive",
+        "resolved": "0.0.2-beta.67",
+        "contentHash": "R3RGHEX2QCSmVc6ZZLCyMqvcHcuHAZJUw6gwFyqKg1JOKAAU+RzvvTHyDF67GJOjd19HB+T5BojTqb11PIRwsw=="
+      },
       "JetBrains.Annotations": {
         "type": "Transitive",
         "resolved": "10.3.0",
@@ -2092,6 +2097,7 @@
       "walletwasabi": {
         "type": "Project",
         "dependencies": {
+          "Jab": "0.0.2-beta.67",
           "Microsoft.AspNetCore.Mvc.NewtonsoftJson": "5.0.0",
           "Microsoft.Win32.SystemEvents": "5.0.0",
           "NBitcoin": "5.0.73",
@@ -2105,6 +2111,7 @@
           "Avalonia.Desktop": "0.9.12",
           "Dock.Avalonia.Themes.Default": "0.9.9",
           "Dock.Avalonia.Themes.Metro": "0.9.9",
+          "Jab": "0.0.2-beta.67",
           "System.Reactive": "5.0.0",
           "System.Runtime": "4.3.1",
           "WalletWasabi": "1.0.0"

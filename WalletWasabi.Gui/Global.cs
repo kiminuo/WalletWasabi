@@ -1,5 +1,7 @@
 using Avalonia.Controls.Notifications;
+using Jab;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using NBitcoin;
 using NBitcoin.Protocol;
 using NBitcoin.Protocol.Behaviors;
@@ -32,13 +34,17 @@ using WalletWasabi.Services;
 using WalletWasabi.Services.Terminate;
 using WalletWasabi.Stores;
 using WalletWasabi.Tor;
-using WalletWasabi.Userfacing;
 using WalletWasabi.Wallets;
 using WalletWasabi.WebClients.Wasabi;
 
 namespace WalletWasabi.Gui
 {
-	public class Global
+	[ServiceProvider]
+	[Singleton(typeof(AllTransactionStore), typeof(AllTransactionStore))]
+	[Singleton(typeof(IndexStore), typeof(IndexStore))]
+	[Singleton(typeof(MempoolService), typeof(MempoolService))]
+	[Singleton(typeof(BitcoinStore), typeof(BitcoinStore))]
+	public partial class Global
 	{
 		public const string ThemeBackgroundBrushResourceKey = "ThemeBackgroundBrush";
 		public const string ApplicationAccentForegroundBrushResourceKey = "ApplicationAccentForegroundBrush";
@@ -81,6 +87,19 @@ namespace WalletWasabi.Gui
 				DataDir = dataDir;
 				Config = config;
 				UiConfig = uiConfig;
+
+				// Setup our DI container.
+				IServiceCollection serviceCollections = new ServiceCollection()
+					//.AddLogging()
+					.AddSingleton(DataDir)
+					.AddSingleton(Network)
+					.AddSingleton(new SmartHeaderChain())
+					.AddSingleton<AllTransactionStore>()
+					.AddSingleton<IndexStore>()
+					.AddSingleton<MempoolService>()
+					.AddSingleton<IRepository<uint256, Block>, FileSystemBlockRepository>()
+					.AddSingleton<BitcoinStore>();
+
 				TorSettings = new TorSettings(DataDir, torLogsFile, distributionFolderPath: EnvironmentHelpers.GetFullBaseDirectory());
 
 				HostedServices = new HostedServices();
