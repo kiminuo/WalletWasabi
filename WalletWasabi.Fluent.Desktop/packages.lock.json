@@ -276,6 +276,11 @@
           "Newtonsoft.Json.Bson": "1.0.2"
         }
       },
+      "Microsoft.Bcl.AsyncInterfaces": {
+        "type": "Transitive",
+        "resolved": "1.1.1",
+        "contentHash": "yuvf07qFWFqtK3P/MRkEKLhn5r2UbSpVueRziSqj0yJQIKFwG1pq9mOayK3zE5qZCTs0CbrwL9M6R8VwqyGy2w=="
+      },
       "Microsoft.CodeAnalysis.Analyzers": {
         "type": "Transitive",
         "resolved": "2.9.6",
@@ -456,6 +461,15 @@
         "resolved": "9.6.1",
         "contentHash": "DnPE1EGikkEobogmWX2Wsqtwnefw8i7lsh2rvRrZu7OCapB3gd7cDcdk9zztGVZGCAfl75A61qHt1QrIOOH3Ow=="
       },
+      "StrongInject": {
+        "type": "Transitive",
+        "resolved": "1.0.8",
+        "contentHash": "57Cy7y7LX2rZ752vgUTP2fcZE4Qmj19L2w5uP4WsZK91ARCBZg27cqR7ftVSF6lfKvl8aUTWNJbHrIti7o5YiA==",
+        "dependencies": {
+          "Microsoft.Bcl.AsyncInterfaces": "1.1.1",
+          "System.Collections.Immutable": "5.0.0"
+        }
+      },
       "System.AppContext": {
         "type": "Transitive",
         "resolved": "4.1.0",
@@ -493,8 +507,8 @@
       },
       "System.Collections.Immutable": {
         "type": "Transitive",
-        "resolved": "1.6.0",
-        "contentHash": "+aL946rTSJyo4PqstwsVZ5RBfaxfkIx+nTMfpmaxzorqgifRJwndBZhXPWNWGJpys7cQ1/vCvilYN9ugM05JFA=="
+        "resolved": "5.0.0",
+        "contentHash": "FXkLXiK0sVVewcso0imKQoOxjoPAj42R8HtjjbSjVPAzwDfzoyoznWxgA3c38LDbN9SJux1xXoXYAhz98j7r2g=="
       },
       "System.ComponentModel.Annotations": {
         "type": "Transitive",
@@ -989,7 +1003,8 @@
           "Microsoft.AspNetCore.Mvc.NewtonsoftJson": "5.0.0",
           "Microsoft.Win32.SystemEvents": "5.0.0",
           "NBitcoin": "5.0.73",
-          "NBitcoin.Secp256k1": "1.0.10"
+          "NBitcoin.Secp256k1": "1.0.10",
+          "StrongInject": "1.0.8"
         }
       },
       "walletwasabi.fluent": {
@@ -1011,6 +1026,7 @@
           "Avalonia.Desktop": "0.9.12",
           "Dock.Avalonia.Themes.Default": "0.9.9",
           "Dock.Avalonia.Themes.Metro": "0.9.9",
+          "StrongInject": "1.0.8",
           "System.Reactive": "5.0.0",
           "System.Runtime": "4.3.1",
           "WalletWasabi": "1.0.0"
