@@ -2,7 +2,6 @@ using NBitcoin;
 using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -34,10 +33,10 @@ namespace WalletWasabi.Tor.Control
 		/// <summary>Helps generate nonces for auth challenges.</summary>
 		private IRandom Random { get; }
 
-		/// <summary>Connects to Tor Control endpoint and authenticates using safe-cookie mechanism.</summary>
+		/// <summary>Connects to Tor Control endpoint and authenticates using password mechanism.</summary>
 		/// <seealso href="https://gitweb.torproject.org/torspec.git/tree/control-spec.txt">See section 3.5</seealso>
 		/// <exception cref="TorControlException">If TCP connection cannot be established OR if authentication fails for some reason.</exception>
-		public async Task<TorControlClient> ConnectAndAuthenticateAsync(IPEndPoint endPoint, string cookieString, CancellationToken cancellationToken = default)
+		public async Task<TorControlClient> ConnectAndAuthenticateAsync(IPEndPoint endPoint, CancellationToken cancellationToken = default)
 		{
 			TcpClient tcpClient = Connect(endPoint);
 			TorControlClient? clientToDispose = null;
@@ -46,7 +45,7 @@ namespace WalletWasabi.Tor.Control
 			{
 				TorControlClient controlClient = clientToDispose = new(tcpClient);
 
-				await AuthSafeCookieOrThrowAsync(controlClient, cookieString, cancellationToken).ConfigureAwait(false);
+				await AuthSafeCookieOrThrowAsync(controlClient, cancellationToken).ConfigureAwait(false);
 
 				// All good, do not dispose.
 				clientToDispose = null;
@@ -63,7 +62,7 @@ namespace WalletWasabi.Tor.Control
 		/// <seealso href="https://gitweb.torproject.org/torspec.git/tree/control-spec.txt">See section 3.24 for SAFECOOKIE authentication.</seealso>
 		/// <seealso href="https://github.com/torproject/stem/blob/63a476056017dda5ede35efc4e4f7acfcc1d7d1a/stem/connection.py#L893">Python implementation.</seealso>
 		/// <exception cref="TorControlException">If authentication fails for some reason.</exception>
-		internal async Task<TorControlClient> AuthSafeCookieOrThrowAsync(TorControlClient controlClient, string cookieString, CancellationToken cancellationToken = default)
+		internal async Task<TorControlClient> AuthSafeCookieOrThrowAsync(TorControlClient controlClient, CancellationToken cancellationToken = default)
 		{
 			byte[] nonceBytes = new byte[32];
 			Random.GetBytes(nonceBytes);
@@ -92,15 +91,8 @@ namespace WalletWasabi.Tor.Control
 				throw new TorControlException("AUTHCHALLENGE reply cannot be parsed.");
 			}
 
-			string serverNonce = match.Groups[2].Value;
-			string toHash = $"{cookieString}{clientNonce}{serverNonce}";
-
-			using HMACSHA256 hmacSha256 = new(ClientHmacKey);
-			byte[] serverHash = hmacSha256.ComputeHash(ByteHelpers.FromHex(toHash));
-			string serverHashStr = ByteHelpers.ToHex(serverHash);
-
-			Logger.LogTrace($"Authenticate using server hash: '{serverHashStr}'.");
-			TorControlReply authenticationReply = await controlClient.SendCommandAsync($"AUTHENTICATE {serverHashStr}\r\n", cancellationToken).ConfigureAwait(false);
+			Logger.LogTrace($"Authenticate using server hash: 'password'.");
+			TorControlReply authenticationReply = await controlClient.SendCommandAsync($"AUTHENTICATE \"password\"\r\n", cancellationToken).ConfigureAwait(false);
 
 			if (!authenticationReply)
 			{

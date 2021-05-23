@@ -141,11 +141,11 @@ namespace WalletWasabi.Tor
 		private async Task<TorControlClient> InitTorControlAsync(CancellationToken token = default)
 		{
 			// Get cookie.
-			string cookieString = ByteHelpers.ToHex(File.ReadAllBytes(Settings.CookieAuthFilePath));
+			// string cookieString = ByteHelpers.ToHex(File.ReadAllBytes(Settings.CookieAuthFilePath));
 
 			// Authenticate.
 			TorControlClientFactory factory = new();
-			TorControlClient client = await factory.ConnectAndAuthenticateAsync(Settings.ControlEndpoint, cookieString, token).ConfigureAwait(false);
+			TorControlClient client = await factory.ConnectAndAuthenticateAsync(Settings.ControlEndpoint, token).ConfigureAwait(false);
 
 			if (Settings.TerminateOnExit)
 			{

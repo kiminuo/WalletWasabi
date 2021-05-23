@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using WalletWasabi.Microservices;
+using WalletWasabi.Tor.Control;
 
 namespace WalletWasabi.Tor
 {
@@ -31,6 +33,13 @@ namespace WalletWasabi.Tor
 			OwningProcessId = owningProcessId;
 			GeoIpPath = Path.Combine(DistributionFolder, "Tor", "Geoip", "geoip");
 			GeoIp6Path = Path.Combine(DistributionFolder, "Tor", "Geoip", "geoip6");
+
+			using RandomNumberGenerator randomNumberGenerator = RandomNumberGenerator.Create();
+			ControlSalt = new byte[8];
+			randomNumberGenerator.GetBytes(ControlSalt);
+
+			// TODO: Generate random.
+			ControlPassphrase = "password";			
 		}
 
 		/// <summary>Full directory path where Tor binaries are placed.</summary>
@@ -58,10 +67,16 @@ namespace WalletWasabi.Tor
 		public string CookieAuthFilePath { get; }
 
 		/// <summary>Tor control endpoint.</summary>
-		public IPEndPoint SocksEndpoint { get; } = new(IPAddress.Loopback, 37150);
+		public IPEndPoint SocksEndpoint { get; } = new(IPAddress.Loopback, 9050);
 
 		/// <summary>Tor control endpoint.</summary>
-		public IPEndPoint ControlEndpoint { get; } = new(IPAddress.Loopback, 37151);
+		public IPEndPoint ControlEndpoint { get; } = new(IPAddress.Loopback, 9051);
+
+		/// <summary>Salt bytes used to construct <c>--HashedControlPassword</c> argument.</summary>
+		private byte[] ControlSalt { get; }
+
+		/// <summary>Password used construct <c>--HashedControlPassword</c> argument and to authenticate using Tor control protocol.</summary>
+		public string ControlPassphrase { get; }
 
 		private string GeoIpPath { get; }
 		private string GeoIp6Path { get; }
@@ -77,12 +92,15 @@ namespace WalletWasabi.Tor
 
 		public string GetCmdArguments()
 		{
+			string hashedControlPassword = HashedControlPasswordProvider.Compute(ControlSalt, ControlPassphrase, indicator: 0x60);
+
 			List<string> arguments = new()
 			{
 				$"--SOCKSPort {SocksEndpoint}",
-				$"--CookieAuthentication 1",
+				// $"--CookieAuthentication 1",
 				$"--ControlPort {ControlEndpoint.Port}",
-				$"--CookieAuthFile \"{CookieAuthFilePath}\"",
+				$"--HashedControlPassword {hashedControlPassword}",
+				// $"--CookieAuthFile \"{CookieAuthFilePath}\"",
 				$"--DataDirectory \"{TorDataDir}\"",
 				$"--GeoIPFile \"{GeoIpPath}\"",
 				$"--GeoIPv6File \"{GeoIp6Path}\"",
