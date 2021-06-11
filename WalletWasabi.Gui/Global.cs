@@ -154,7 +154,10 @@ namespace WalletWasabi.Gui
 					}
 
 					Tor.Http.TorHttpClient torHttpClient = BackendHttpClientFactory.NewTorHttpClient(Mode.DefaultCircuit);
-					HostedServices.Register<TorMonitor>(new TorMonitor(period: TimeSpan.FromSeconds(3), fallbackBackendUri: Config.GetFallbackBackendUri(), torHttpClient, TorManager), nameof(TorMonitor));
+					TorMonitor torMonitor = new(period: TimeSpan.FromSeconds(3), fallbackBackendUri: Config.GetFallbackBackendUri(), torHttpClient, TorManager);
+					HostedServices.Register<TorMonitor>(torMonitor, nameof(TorMonitor));
+
+					_ = torMonitor.InitializeAsync(cancel);
 				}
 
 				Logger.LogInfo($"{nameof(TorProcessManager)} is initialized.");

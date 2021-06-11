@@ -49,6 +49,9 @@ namespace WalletWasabi.Tor.Control
 		private CancellationTokenSource ReaderCts { get; }
 		private Task ReaderLoopTask { get; }
 
+		/// <remarks>This helps with graceful stopping of the reader loop.</remarks>
+		private volatile bool _readLastSyncReply;
+
 		/// <summary>Channel only for synchronous replies from Tor control.</summary>
 		/// <remarks>Typically, there is at most one message in the channel at a time.</remarks>
 		private Channel<TorControlReply> SyncChannel { get; }
@@ -89,6 +92,7 @@ namespace WalletWasabi.Tor.Control
 			// Grammar: "PROTOCOLINFO" *(SP PIVERSION) CRLF
 			// Note: PIVERSION is there in case we drastically change the syntax one day. For now it should always be "1".
 			TorControlReply reply = await SendCommandAsync("PROTOCOLINFO 1\r\n", cancellationToken).ConfigureAwait(false);
+			Logger.LogTrace($"Got reply: '{reply}'.");
 
 			return ProtocolInfoReply.FromReply(reply);
 		}
@@ -116,8 +120,22 @@ namespace WalletWasabi.Tor.Control
 		/// </summary>
 		/// <remarks>If server is a client (OP), exit immediately. If it's a relay (OR), close listeners and exit after <c>ShutdownWaitLength</c> seconds.</remarks>
 		/// <seealso href="https://gitweb.torproject.org/torspec.git/tree/control-spec.txt">See 3.7. SIGNAL.</seealso>
-		public Task<TorControlReply> SignalShutdownAsync(CancellationToken cancellationToken = default)
-			=> SendCommandAsync("SIGNAL SHUTDOWN\r\n", cancellationToken);
+		public async Task<TorControlReply> SignalShutdownAsync(CancellationToken cancellationToken = default)
+		{
+			using IDisposable _ = await MessageLock.LockAsync(cancellationToken).ConfigureAwait(false);
+
+			// This assignment must be done after MessageLock is acquired to prevent the race in calling SendCommand method by someone else.
+			_readLastSyncReply = true;
+
+			TorControlReply reply = await SendCommandNoLockAsync("SIGNAL SHUTDOWN\r\n", cancellationToken).ConfigureAwait(false);
+
+			if (reply.Success)
+			{
+				ReaderCts.Cancel();
+			}
+
+			return reply;
+		}
 
 		/// <summary>
 		/// Causes Tor to stop polling for the existence of a process with its owning controller's PID.
@@ -127,20 +145,27 @@ namespace WalletWasabi.Tor.Control
 		public Task<TorControlReply> ResetOwningControllerProcessConfAsync(CancellationToken cancellationToken = default)
 			=> SendCommandAsync("RESETCONF __OwningControllerProcess\r\n", cancellationToken);
 
-		/// <summary>
-		/// Sends a command to Tor.
-		/// </summary>
+		/// <summary>Sends a command to Tor.</summary>
 		/// <remarks>This is meant as a low-level API method, if needed for some reason.</remarks>
 		/// <param name="command">A Tor control command which must end with <c>\r\n</c>.</param>
 		public async Task<TorControlReply> SendCommandAsync(string command, CancellationToken cancellationToken = default)
 		{
-			using var _ = await MessageLock.LockAsync(cancellationToken).ConfigureAwait(false);
+			using IDisposable _ = await MessageLock.LockAsync(cancellationToken).ConfigureAwait(false);
+			return await SendCommandNoLockAsync(command, cancellationToken).ConfigureAwait(false);
+		}
+
+		/// <remarks>Lock <see cref="MessageLock"/> must be acquired by the caller.</remarks>
+		private async Task<TorControlReply> SendCommandNoLockAsync(string command, CancellationToken cancellationToken = default)
+		{
+			using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ReaderCts.Token, cancellationToken);
 
 			Logger.LogTrace($"Client: About to send command: '{command.TrimEnd()}'");
-			await PipeWriter.WriteAsync(new ReadOnlyMemory<byte>(Encoding.ASCII.GetBytes(command)), cancellationToken).ConfigureAwait(false);
-			await PipeWriter.FlushAsync(cancellationToken).ConfigureAwait(false);
+			_ = await PipeWriter.WriteAsync(new ReadOnlyMemory<byte>(Encoding.ASCII.GetBytes(command)), linkedCts.Token).ConfigureAwait(false);
+			_ = await PipeWriter.FlushAsync(linkedCts.Token).ConfigureAwait(false);
 
-			TorControlReply reply = await SyncChannel.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+			TorControlReply reply = await SyncChannel.Reader.ReadAsync(linkedCts.Token).ConfigureAwait(false);
+			Logger.LogTrace($"Client: Reply: '{reply}'");
+
 			return reply;
 		}
 
@@ -182,7 +207,7 @@ namespace WalletWasabi.Tor.Control
 				lock (AsyncChannelsLock)
 				{
 					newList = new(AsyncChannels);
-					newList.Remove(channel);
+					_ = newList.Remove(channel);
 
 					AsyncChannels = newList;
 				}
@@ -202,6 +227,7 @@ namespace WalletWasabi.Tor.Control
 
 					if (reply.StatusCode == StatusCode.AsynchronousEventNotify)
 					{
+						Logger.LogTrace($"Async '{reply}'");
 						List<Channel<TorControlReply>> list;
 
 						lock (AsyncChannelsLock)
@@ -217,8 +243,15 @@ namespace WalletWasabi.Tor.Control
 					}
 					else
 					{
+						Logger.LogTrace($"Sync '{reply}'");
 						// Propagate a response back to the requester.
 						await SyncChannel.Writer.WriteAsync(reply, ReaderCts.Token).ConfigureAwait(false);
+
+						if (_readLastSyncReply)
+						{
+							Logger.LogTrace("Request to read last message was issued. No more message reading.");
+							break;
+						}
 					}
 				}
 			}

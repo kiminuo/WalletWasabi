@@ -48,7 +48,7 @@ namespace WalletWasabi.Tor
 						{
 							Logger.LogInfo("Tor does not work properly. Test fallback URI.");
 							using HttpRequestMessage request = new(HttpMethod.Get, FallbackBackendUri);
-							using var _ = await HttpClient.SendAsync(request, token).ConfigureAwait(false);
+							using HttpResponseMessage _ = await HttpClient.SendAsync(request, token).ConfigureAwait(false);
 
 							// Check if it changed in the meantime...
 							if (TorHttpPool.LatestTorException is TorConnectCommandFailedException torEx2 && torEx2.RepField == RepField.HostUnreachable)

@@ -10,6 +10,7 @@ using WalletWasabi.Microservices;
 using WalletWasabi.Tor.Control;
 using WalletWasabi.Tor.Control.Exceptions;
 using WalletWasabi.Tor.Control.Messages;
+using WalletWasabi.Tor.Control.Messages.Events;
 using WalletWasabi.Tor.Socks5;
 
 namespace WalletWasabi.Tor
@@ -34,7 +35,7 @@ namespace WalletWasabi.Tor
 		private TorSettings Settings { get; }
 		private TorTcpConnectionFactory TcpConnectionFactory { get; }
 
-		private TorControlClient? TorControlClient { get; set; }
+		public TorControlClient? TorControlClient { get; set; }
 
 		/// <summary>
 		/// Starts Tor process if it is not running already.
@@ -168,6 +169,37 @@ namespace WalletWasabi.Tor
 			return client;
 		}
 
+		/// <summary>
+		/// Checks whether Tor can access network (or at least Tor believes so).
+		/// </summary>
+		public async Task<bool> CheckStatusAsync()
+		{
+			bool result = false;
+
+			if (TorControlClient is { } client)
+			{
+				Logger.LogInfo("**Checking Tor status**");
+				TorControlReply reply = await client.SendCommandAsync("GETINFO network-liveness\r\n").ConfigureAwait(false);
+
+				if (reply && reply.ResponseLines.Count == 2 && reply.ResponseLines[0] == "network-liveness=up")
+				{
+					result = true;
+				}
+
+				Logger.LogInfo("**Circuit status**");
+				TorControlReply statusReply = await client.SendCommandAsync("GETINFO circuit-status\r\n").ConfigureAwait(false);
+				Logger.LogInfo($"Status reply: {statusReply}");
+
+				Logger.LogInfo("**Circuit status**");
+
+				ProtocolInfoReply protocolInfoReply2 = await client.GetProtocolInfoAsync().ConfigureAwait(false);
+				Logger.LogInfo($"Protocol info reply: {protocolInfoReply2}");
+			}
+
+			Logger.LogTrace($"Checking Tor status: {(result ? "UP" : "DOWN")}");
+			return result;
+		}
+
 		public async Task StopAsync()
 		{
 			_disposed = true;
@@ -182,7 +214,7 @@ namespace WalletWasabi.Tor
 				// > SHUTDOWN" and wait for the Tor process to close.)
 				if (Settings.TerminateOnExit)
 				{
-					await torControlClient.SignalShutdownAsync().ConfigureAwait(false);
+					_ = await torControlClient.SignalShutdownAsync().ConfigureAwait(false);
 				}
 
 				// Leads to Tor termination because we sent TAKEOWNERSHIP command.
