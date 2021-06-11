@@ -23,6 +23,7 @@ using WalletWasabi.Legal;
 using WalletWasabi.Logging;
 using WalletWasabi.Models;
 using WalletWasabi.Services;
+using WalletWasabi.Tor;
 using WalletWasabi.Tor.Socks5.Exceptions;
 using WalletWasabi.Wallets;
 using WalletWasabi.WebClients.Wasabi;
@@ -39,6 +40,7 @@ namespace WalletWasabi.Gui.ViewModels
 		private bool _useBitcoinCore;
 		private BackendStatus _backend;
 		private TorStatus _tor;
+		private string _torStatusXXX;
 		private int _peers;
 		private ObservableAsPropertyHelper<int> _filtersLeft;
 		private string _exchangeRate;
@@ -59,6 +61,7 @@ namespace WalletWasabi.Gui.ViewModels
 			Backend = BackendStatus.NotConnected;
 			UseTor = false;
 			Tor = TorStatus.NotRunning;
+			_torStatusXXX = "<No info yet>";
 			Peers = 0;
 			_exchangeRate = "";
 			IsExchangeRateAvailable = false;
@@ -102,6 +105,12 @@ namespace WalletWasabi.Gui.ViewModels
 		{
 			get => _tor;
 			set => this.RaiseAndSetIfChanged(ref _tor, value);
+		}
+
+		public string TorStatusXXX
+		{
+			get => _torStatusXXX;
+			set => this.RaiseAndSetIfChanged(ref _torStatusXXX, value);
 		}
 
 		public int Peers
@@ -163,6 +172,7 @@ namespace WalletWasabi.Gui.ViewModels
 			UseBitcoinCore = Config.StartLocalBitcoinCoreOnStartup;
 
 			var updateChecker = HostedServices.Get<UpdateChecker>();
+			var torMonitor = HostedServices.Get<TorMonitor>();
 			UpdateStatus = updateChecker.UpdateStatus;
 
 			var rpcMonitor = HostedServices.GetOrDefault<RpcMonitor>();
@@ -248,6 +258,11 @@ namespace WalletWasabi.Gui.ViewModels
 			Synchronizer.WhenAnyValue(x => x.TorStatus)
 				.ObserveOn(RxApp.MainThreadScheduler)
 				.Subscribe(status => Tor = UseTor ? status : TorStatus.TurnedOff)
+				.DisposeWith(Disposables);
+
+			torMonitor.WhenAnyValue(x => x.TorStatusXXX)
+				.ObserveOn(RxApp.MainThreadScheduler)
+				.Subscribe(status => TorStatusXXX = status)
 				.DisposeWith(Disposables);
 
 			Synchronizer.WhenAnyValue(x => x.BackendStatus)

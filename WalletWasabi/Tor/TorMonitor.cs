@@ -1,9 +1,20 @@
+using Microsoft.Extensions.Caching.Memory;
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using WalletWasabi.Bases;
 using WalletWasabi.Logging;
+using WalletWasabi.Tor.Control;
+using WalletWasabi.Tor.Control.Exceptions;
+using WalletWasabi.Tor.Control.Messages;
+using WalletWasabi.Tor.Control.Messages.CircuitStatus;
+using WalletWasabi.Tor.Control.Messages.Events;
+using WalletWasabi.Tor.Control.Messages.Events.StatusEvents;
+using WalletWasabi.Tor.Control.Utils;
 using WalletWasabi.Tor.Http;
 using WalletWasabi.Tor.Socks5.Exceptions;
 using WalletWasabi.Tor.Socks5.Models.Fields.OctetFields;
@@ -18,6 +29,10 @@ namespace WalletWasabi.Tor
 	{
 		public static readonly TimeSpan CheckIfRunningAfterTorMisbehavedFor = TimeSpan.FromSeconds(7);
 
+		private string _torStatusXXX = "N/A";
+
+		public event PropertyChangedEventHandler? PropertyChanged;
+
 		/// <summary>
 		/// Creates a new instance of the object.
 		/// </summary>
@@ -28,10 +43,114 @@ namespace WalletWasabi.Tor
 			TorProcessManager = torProcessManager;
 		}
 
-		public static bool RequestFallbackAddressUsage { get; private set; } = false;
+		public static bool RequestFallbackAddressUsage { get; private set; }
 		private Uri FallbackBackendUri { get; }
 		private TorHttpClient HttpClient { get; }
 		private TorProcessManager TorProcessManager { get; }
+
+		public string TorStatusXXX
+		{
+			get => _torStatusXXX;
+			private set => RaiseAndSetIfChanged(ref _torStatusXXX, value);
+		}
+
+		protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+		{
+			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+		}
+
+		protected bool RaiseAndSetIfChanged<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+		{
+			if (EqualityComparer<T>.Default.Equals(field, value))
+			{
+				return false;
+			}
+
+			field = value;
+			OnPropertyChanged(propertyName);
+			return true;
+		}
+
+		public async Task InitializeAsync(CancellationToken cancellationToken)
+		{
+			TorControlClient client = TorProcessManager.TorControlClient!;
+
+			TorControlReply subscriptionReply = await client.SendCommandAsync("SETEVENTS STATUS_GENERAL STATUS_CLIENT STATUS_SERVER CIRC\r\n", cancellationToken).ConfigureAwait(false);
+
+			if (!subscriptionReply.Success)
+			{
+				throw new TorControlException("Failed to initialize Tor monitor.");
+			}
+
+			MemoryCacheEntryOptions cacheEntryOptions = new()
+			{
+				SlidingExpiration = TimeSpan.FromMinutes(10),
+				Size = 1
+			};
+
+			using MemoryCache circuitCache = new(new MemoryCacheOptions()
+			{
+				SizeLimit = 500
+			});
+
+			string bootstrapInfo = "<Loading>";
+			bool circuitEstablished = false;
+			string circuitsInfo = "<Loading>";
+
+			await foreach (TorControlReply reply in client.ReadEventsAsync(cancellationToken).ConfigureAwait(false))
+			{
+				IAsyncEvent asyncEvent;
+
+				try
+				{
+					asyncEvent = AsyncEventParser.Parse(reply);
+				}
+				catch (Exception e)
+				{
+					Logger.LogError($"Exception thrown when parsing event: '{reply}'", e);
+					continue;
+				}
+
+				if (asyncEvent is BootstrapStatusEvent bootstrapEvent)
+				{
+					bootstrapInfo = bootstrapEvent.Progress < 100
+						? $"{bootstrapEvent.Progress}/100"
+						: "DONE";
+				}
+				else if (asyncEvent is StatusEvent statusEvent)
+				{
+					if (statusEvent.Action == "CIRCUIT_ESTABLISHED")
+					{
+						circuitEstablished = true;
+					}
+				}
+				else if (asyncEvent is CircEvent circEvent)
+				{
+					CircuitInfo info = circEvent.CircuitInfo;
+
+					if (info.CircStatus is CircStatus.CLOSED or CircStatus.FAILED)
+					{
+						circuitCache.Remove(info.CircuitID);
+					}
+					else
+					{
+						_ = circuitCache.Set(info.CircuitID, info, cacheEntryOptions);
+					}
+
+					circuitsInfo = $"{circuitCache.Count} in total";
+				}
+
+				// Allocates too much. Improve efficiency.
+				if (!circuitEstablished)
+				{
+					TorStatusXXX = $"[Tor monitor: Bootstrap: {bootstrapInfo}, Circuit established: No]";
+				}
+				else
+				{
+					TorStatusXXX = $"[Tor monitor: Bootstrap: {bootstrapInfo}, Circuits: {circuitsInfo}]";
+				}
+			}
+		}
 
 		/// <inheritdoc/>
 		protected override async Task ActionAsync(CancellationToken token)
