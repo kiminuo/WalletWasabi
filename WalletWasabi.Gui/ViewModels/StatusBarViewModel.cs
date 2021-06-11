@@ -260,9 +260,9 @@ namespace WalletWasabi.Gui.ViewModels
 				.Subscribe(status => Tor = UseTor ? status : TorStatus.TurnedOff)
 				.DisposeWith(Disposables);
 
-			torMonitor.WhenAnyValue(x => x.TorStatusXXX)
+			Observable.FromEventPattern(torMonitor, nameof(torMonitor.TorStatusChanged))
 				.ObserveOn(RxApp.MainThreadScheduler)
-				.Subscribe(status => TorStatusXXX = status)
+				.Subscribe(status => TorStatusXXX = (string)status.EventArgs)
 				.DisposeWith(Disposables);
 
 			Synchronizer.WhenAnyValue(x => x.BackendStatus)

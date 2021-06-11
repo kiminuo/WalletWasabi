@@ -29,9 +29,7 @@ namespace WalletWasabi.Tor
 	{
 		public static readonly TimeSpan CheckIfRunningAfterTorMisbehavedFor = TimeSpan.FromSeconds(7);
 
-		private string _torStatusXXX = "N/A";
-
-		public event PropertyChangedEventHandler? PropertyChanged;
+		public event EventHandler<string>? TorStatusChanged;
 
 		/// <summary>
 		/// Creates a new instance of the object.
@@ -47,29 +45,6 @@ namespace WalletWasabi.Tor
 		private Uri FallbackBackendUri { get; }
 		private TorHttpClient HttpClient { get; }
 		private TorProcessManager TorProcessManager { get; }
-
-		public string TorStatusXXX
-		{
-			get => _torStatusXXX;
-			private set => RaiseAndSetIfChanged(ref _torStatusXXX, value);
-		}
-
-		protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-		{
-			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-		}
-
-		protected bool RaiseAndSetIfChanged<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-		{
-			if (EqualityComparer<T>.Default.Equals(field, value))
-			{
-				return false;
-			}
-
-			field = value;
-			OnPropertyChanged(propertyName);
-			return true;
-		}
 
 		public async Task InitializeAsync(CancellationToken cancellationToken)
 		{
@@ -140,15 +115,19 @@ namespace WalletWasabi.Tor
 					circuitsInfo = $"{circuitCache.Count} in total";
 				}
 
+				string torStatusXXX;
+
 				// Allocates too much. Improve efficiency.
 				if (!circuitEstablished)
 				{
-					TorStatusXXX = $"[Tor monitor: Bootstrap: {bootstrapInfo}, Circuit established: No]";
+					torStatusXXX = $"[Tor monitor: Bootstrap: {bootstrapInfo}, Circuit established: No]";
 				}
 				else
 				{
-					TorStatusXXX = $"[Tor monitor: Bootstrap: {bootstrapInfo}, Circuits: {circuitsInfo}]";
+					torStatusXXX = $"[Tor monitor: Bootstrap: {bootstrapInfo}, Circuits: {circuitsInfo}]";
 				}
+
+				TorStatusChanged?.Invoke(this, torStatusXXX);
 			}
 		}
 
