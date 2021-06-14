@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,7 +9,6 @@ using WalletWasabi.Microservices;
 using WalletWasabi.Tor.Control;
 using WalletWasabi.Tor.Control.Exceptions;
 using WalletWasabi.Tor.Control.Messages;
-using WalletWasabi.Tor.Control.Messages.Events;
 using WalletWasabi.Tor.Socks5;
 
 namespace WalletWasabi.Tor
@@ -167,7 +165,7 @@ namespace WalletWasabi.Tor
 			}
 
 			return client;
-		}		
+		}
 
 		public async Task StopAsync()
 		{
