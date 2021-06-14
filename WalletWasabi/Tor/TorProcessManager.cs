@@ -167,38 +167,7 @@ namespace WalletWasabi.Tor
 			}
 
 			return client;
-		}
-
-		/// <summary>
-		/// Checks whether Tor can access network (or at least Tor believes so).
-		/// </summary>
-		public async Task<bool> CheckStatusAsync()
-		{
-			bool result = false;
-
-			if (TorControlClient is { } client)
-			{
-				Logger.LogInfo("**Checking Tor status**");
-				TorControlReply reply = await client.SendCommandAsync("GETINFO network-liveness\r\n").ConfigureAwait(false);
-
-				if (reply && reply.ResponseLines.Count == 2 && reply.ResponseLines[0] == "network-liveness=up")
-				{
-					result = true;
-				}
-
-				Logger.LogInfo("**Circuit status**");
-				TorControlReply statusReply = await client.SendCommandAsync("GETINFO circuit-status\r\n").ConfigureAwait(false);
-				Logger.LogInfo($"Status reply: {statusReply}");
-
-				Logger.LogInfo("**Circuit status**");
-
-				ProtocolInfoReply protocolInfoReply2 = await client.GetProtocolInfoAsync().ConfigureAwait(false);
-				Logger.LogInfo($"Protocol info reply: {protocolInfoReply2}");
-			}
-
-			Logger.LogTrace($"Checking Tor status: {(result ? "UP" : "DOWN")}");
-			return result;
-		}
+		}		
 
 		public async Task StopAsync()
 		{
