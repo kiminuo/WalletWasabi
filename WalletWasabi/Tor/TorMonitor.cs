@@ -47,12 +47,7 @@ namespace WalletWasabi.Tor
 		{
 			TorControlClient client = TorProcessManager.TorControlClient!;
 
-			TorControlReply subscriptionReply = await client.SendCommandAsync("SETEVENTS STATUS_GENERAL STATUS_CLIENT STATUS_SERVER CIRC\r\n", cancellationToken).ConfigureAwait(false);
-
-			if (!subscriptionReply.Success)
-			{
-				throw new TorControlException("Failed to initialize Tor monitor.");
-			}
+			await client.SubscribeEventsAsync(new string[] { "STATUS_GENERAL", "STATUS_CLIENT", "STATUS_SERVER", "CIRC" }, cancellationToken).ConfigureAwait(false);
 
 			MemoryCacheEntryOptions cacheEntryOptions = new()
 			{
