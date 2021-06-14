@@ -47,6 +47,7 @@ namespace WalletWasabi.Tor
 		{
 			TorControlClient client = TorProcessManager.TorControlClient!;
 
+			// TODO: Improve return value?
 			await client.SubscribeEventsAsync(new string[] { "STATUS_GENERAL", "STATUS_CLIENT", "STATUS_SERVER", "CIRC" }, cancellationToken).ConfigureAwait(false);
 
 			MemoryCacheEntryOptions cacheEntryOptions = new()

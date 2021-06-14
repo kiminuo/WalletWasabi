@@ -178,6 +178,8 @@ namespace WalletWasabi.Tor.Control
 			return reply;
 		}
 
+		// TODO: ADD OVERLOAD WITH TEMPORARY SUBSCRIPTION?
+
 		/// <summary>Allows the caller to read Tor events using <c>await foreach</c>.</summary>
 		/// <remarks>Processing of replies does not block other readers.</remarks>
 		/// <example>
