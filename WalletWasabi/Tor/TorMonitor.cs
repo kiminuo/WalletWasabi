@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using WalletWasabi.Bases;
 using WalletWasabi.Logging;
 using WalletWasabi.Tor.Control;
+using WalletWasabi.Tor.Control.Exceptions;
 using WalletWasabi.Tor.Control.Messages;
 using WalletWasabi.Tor.Control.Messages.CircuitStatus;
 using WalletWasabi.Tor.Control.Messages.Events;
@@ -15,6 +16,7 @@ using WalletWasabi.Tor.Http;
 using WalletWasabi.Tor.Socks5.Exceptions;
 using WalletWasabi.Tor.Socks5.Models.Fields.OctetFields;
 using WalletWasabi.Tor.Socks5.Pool;
+using static NBitcoin.Protocol.Behaviors.ChainBehavior;
 
 namespace WalletWasabi.Tor
 {
@@ -47,7 +49,8 @@ namespace WalletWasabi.Tor
 			TorControlClient client = TorProcessManager.TorControlClient!;
 
 			// TODO: Improve return value?
-			await client.SubscribeEventsAsync(new string[] { "STATUS_GENERAL", "STATUS_CLIENT", "STATUS_SERVER", "CIRC" }, cancellationToken).ConfigureAwait(false);
+			string[] eventNames = new string[] { "STATUS_GENERAL", "STATUS_CLIENT", "STATUS_SERVER", "CIRC" };
+			await client.SubscribeEventsAsync(eventNames, cancellationToken).ConfigureAwait(false);
 
 			MemoryCacheEntryOptions cacheEntryOptions = new()
 			{
@@ -72,14 +75,15 @@ namespace WalletWasabi.Tor
 				{
 					asyncEvent = AsyncEventParser.Parse(reply);
 				}
-				catch (Exception e)
+				catch (TorControlReplyParseException e)
 				{
 					Logger.LogError($"Exception thrown when parsing event: '{reply}'", e);
 					continue;
 				}
 
 				if (asyncEvent is BootstrapStatusEvent bootstrapEvent)
-				{
+{
+					Logger.LogInfo($"XXX: Bootstrap event: '{bootstrapEvent}'.");
 					bootstrapInfo = bootstrapEvent.Progress < 100
 						? $"{bootstrapEvent.Progress}/100"
 						: "DONE";
@@ -88,6 +92,7 @@ namespace WalletWasabi.Tor
 				{
 					if (statusEvent.Action == "CIRCUIT_ESTABLISHED")
 					{
+						Logger.LogInfo($"XXX: StatusEvent: '{statusEvent}'.");
 						circuitEstablished = true;
 					}
 				}
