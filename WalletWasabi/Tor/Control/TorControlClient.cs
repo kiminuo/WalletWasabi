@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using WalletWasabi.Logging;
 using WalletWasabi.Tor.Control.Exceptions;
 using WalletWasabi.Tor.Control.Messages;
+using WalletWasabi.Tor.Control.Utils;
 
 namespace WalletWasabi.Tor.Control
 {
@@ -102,6 +103,31 @@ namespace WalletWasabi.Tor.Control
 			TorControlReply reply = await SendCommandAsync("PROTOCOLINFO 1\r\n", cancellationToken).ConfigureAwait(false);
 
 			return ProtocolInfoReply.FromReply(reply);
+		}
+
+		/// <summary>
+		/// Gets process ID belonging to the main Tor process.
+		/// </summary>
+		/// <seealso href="https://gitweb.torproject.org/torspec.git/tree/control-spec.txt">3.9. GETINFO</seealso>
+		public async Task<int> GetTorProcessIdAsync(CancellationToken cancellationToken = default)
+		{			
+			TorControlReply reply = await SendCommandAsync("GETINFO process/pid\r\n", cancellationToken).ConfigureAwait(false);
+
+			if (!reply.Success)
+			{				
+				throw new TorControlException("Failed to get Tor process ID."); // This should never happen.
+			}
+
+			(string key, string value, string _) = Tokenizer.ReadKeyValueAssignment(reply.ResponseLines[0]);
+
+			if (key != "process/pid")
+			{				
+				throw new TorControlException("Invalid key received."); // This should never happen.
+			}
+
+			int result = int.Parse(value);
+
+			return result;
 		}
 
 		/// <summary>
