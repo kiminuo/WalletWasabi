@@ -25,6 +25,9 @@ namespace WalletWasabi.Tor.Control
 			SingleWriter = true
 		};
 
+		/// <remarks>This helps with graceful stopping of the reader loop.</remarks>
+		private volatile bool _readLastSyncReply;
+
 		public TorControlClient(TcpClient tcpClient) :
 			this(PipeReader.Create(tcpClient.GetStream()), PipeWriter.Create(tcpClient.GetStream()))
 		{
@@ -51,9 +54,6 @@ namespace WalletWasabi.Tor.Control
 		private CancellationTokenSource ReaderCts { get; }
 		private Task ReaderLoopTask { get; }
 
-		/// <remarks>This helps with graceful stopping of the reader loop.</remarks>
-		private volatile bool _readLastSyncReply;
-
 		/// <summary>Channel only for synchronous replies from Tor control.</summary>
 		/// <remarks>Typically, there is at most one message in the channel at a time.</remarks>
 		private Channel<TorControlReply> SyncChannel { get; }
@@ -73,7 +73,7 @@ namespace WalletWasabi.Tor.Control
 		private AsyncLock MessageLock { get; }
 
 		/// <summary>Key represents an event name and value represents a subscription counter.</summary>
-		private Dictionary<string, int> SubscribedEvents { get; } = new();
+		private SortedDictionary<string, int> SubscribedEvents { get; } = new();
 
 		/// <summary>Lock to guard all access to <see cref="SubscribedEvents"/>.</summary>
 		/// <remarks><see cref="MessageLock"/> must be locked first if it is needed too.</remarks>
@@ -101,7 +101,6 @@ namespace WalletWasabi.Tor.Control
 			// Grammar: "PROTOCOLINFO" *(SP PIVERSION) CRLF
 			// Note: PIVERSION is there in case we drastically change the syntax one day. For now it should always be "1".
 			TorControlReply reply = await SendCommandAsync("PROTOCOLINFO 1\r\n", cancellationToken).ConfigureAwait(false);
-			Logger.LogTrace($"Got reply: '{reply}'.");
 
 			return ProtocolInfoReply.FromReply(reply);
 		}
@@ -178,8 +177,6 @@ namespace WalletWasabi.Tor.Control
 			return reply;
 		}
 
-		// TODO: ADD OVERLOAD WITH TEMPORARY SUBSCRIPTION?
-
 		/// <summary>Allows the caller to read Tor events using <c>await foreach</c>.</summary>
 		/// <remarks>Processing of replies does not block other readers.</remarks>
 		/// <example>
@@ -207,7 +204,7 @@ namespace WalletWasabi.Tor.Control
 
 				Logger.LogTrace($"ReadEventsAsync: subscribers: {newList.Count}.");
 
-				await foreach (TorControlReply item in channel.Reader.ReadAllAsync(cancellationToken))
+				await foreach (TorControlReply item in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
 				{
 					yield return item;
 				}
@@ -268,7 +265,7 @@ namespace WalletWasabi.Tor.Control
 
 			if (sendCommand)
 			{
-				TorControlReply reply = await SendCommandNoLockAsync($"SET EVENTS {subscribedEventNames}", cancellationToken).ConfigureAwait(false);
+				TorControlReply reply = await SendCommandNoLockAsync($"SETEVENTS {subscribedEventNames}\r\n", cancellationToken).ConfigureAwait(false);
 
 				if (!reply.Success)
 				{
@@ -316,12 +313,13 @@ namespace WalletWasabi.Tor.Control
 
 			if (sendCommand)
 			{
-				TorControlReply reply = await SendCommandNoLockAsync($"SET EVENTS {subscribedEventNames}", cancellationToken).ConfigureAwait(false);
+				string command = subscribedEventNames == "" ? "SETEVENTS\r\n" : $"SETEVENTS {subscribedEventNames}\r\n";
+				TorControlReply reply = await SendCommandNoLockAsync(command, cancellationToken).ConfigureAwait(false);
 
 				if (!reply.Success)
 				{
 					// This should never happen.
-					throw new TorControlException("Failed to subscribe events.");
+					throw new TorControlException("Failed to unsubscribe events.");
 				}
 			}
 		}
@@ -329,7 +327,9 @@ namespace WalletWasabi.Tor.Control
 		/// <summary>Unsubscribes all Tor control events.</summary>
 		public async Task<bool> UnsubscribeAllEventsAsync()
 		{
-			using IDisposable _ = await MessageLock.LockAsync(CancellationToken.None).ConfigureAwait(false);
+			// Sanity timeout.
+			using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
+			using IDisposable _ = await MessageLock.LockAsync(cts.Token).ConfigureAwait(false);
 
 			int count;
 
@@ -341,7 +341,7 @@ namespace WalletWasabi.Tor.Control
 
 			if (count > 0)
 			{
-				TorControlReply reply = await SendCommandNoLockAsync($"SET EVENTS", CancellationToken.None).ConfigureAwait(false);
+				TorControlReply reply = await SendCommandNoLockAsync($"SETEVENTS\r\n", cts.Token).ConfigureAwait(false);
 
 				if (!reply.Success)
 				{
@@ -366,7 +366,6 @@ namespace WalletWasabi.Tor.Control
 
 					if (reply.StatusCode == StatusCode.AsynchronousEventNotify)
 					{
-						Logger.LogTrace($"Async '{reply}'");
 						List<Channel<TorControlReply>> list;
 
 						lock (AsyncChannelsLock)
@@ -382,7 +381,6 @@ namespace WalletWasabi.Tor.Control
 					}
 					else
 					{
-						Logger.LogTrace($"Sync '{reply}'");
 						// Propagate a response back to the requester.
 						await SyncChannel.Writer.WriteAsync(reply, ReaderCts.Token).ConfigureAwait(false);
 
