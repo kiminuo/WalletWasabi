@@ -35,9 +35,7 @@ namespace WalletWasabi.Tor
 
 		public TorControlClient? TorControlClient { get; set; }
 
-		/// <summary>
-		/// Starts Tor process if it is not running already.
-		/// </summary>
+		/// <summary>Starts Tor process if it is not running already.</summary>
 		/// <exception cref="OperationCanceledException"/>
 		public async Task<bool> StartAsync(CancellationToken token = default)
 		{
@@ -53,12 +51,13 @@ namespace WalletWasabi.Tor
 
 				if (isAlreadyRunning)
 				{
-					Logger.LogInfo($"Tor is already running on {Settings.SocksEndpoint.Address}:{Settings.SocksEndpoint.Port}.");
 					controlClient = await InitTorControlAsync(token).ConfigureAwait(false);
 
 					// Tor process can crash even between these two commands too.
 					int processId = await controlClient.GetTorProcessIdAsync(token).ConfigureAwait(false);
 					process = new ProcessAsync(Process.GetProcessById(processId));
+
+					Logger.LogInfo($"Tor is already running on {Settings.SocksEndpoint.Address}:{Settings.SocksEndpoint.Port}.");
 				}
 				else
 				{
@@ -72,10 +71,9 @@ namespace WalletWasabi.Tor
 						return false;
 					}
 
-					controlClient = await InitTorControlAsync(token).ConfigureAwait(false);					
+					controlClient = await InitTorControlAsync(token).ConfigureAwait(false);
+					Logger.LogInfo("Tor is running.");
 				}
-
-				Logger.LogInfo("Tor is running.");
 
 				// Only now we know that Tor process is fully correctly started.
 				TorProcess = process;
