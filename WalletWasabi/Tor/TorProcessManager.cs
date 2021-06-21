@@ -55,33 +55,8 @@ namespace WalletWasabi.Tor
 					return true;
 				}
 
-				string torArguments = Settings.GetCmdArguments();
-
-				ProcessStartInfo startInfo = new()
-				{
-					FileName = Settings.TorBinaryFilePath,
-					Arguments = torArguments,
-					UseShellExecute = false,
-					CreateNoWindow = true,
-					RedirectStandardOutput = true,
-					WorkingDirectory = Settings.TorBinaryDir
-				};
-
-				if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-				{
-					var env = startInfo.EnvironmentVariables;
-
-					env["LD_LIBRARY_PATH"] = !env.ContainsKey("LD_LIBRARY_PATH") || string.IsNullOrEmpty(env["LD_LIBRARY_PATH"])
-						? Settings.TorBinaryDir
-						: Settings.TorBinaryDir + Path.PathSeparator + env["LD_LIBRARY_PATH"];
-
-					Logger.LogDebug($"Environment variable 'LD_LIBRARY_PATH' set to: '{env["LD_LIBRARY_PATH"]}'.");
-				}
-
-				TorProcess = new(startInfo);
-
-				Logger.LogInfo($"Starting Tor process ...");
-				TorProcess.Start();
+				string arguments = Settings.GetCmdArguments();
+				TorProcess = StartProcess(arguments);
 
 				// Ensure it's running.
 				int i = 0;
@@ -130,6 +105,36 @@ namespace WalletWasabi.Tor
 			}
 
 			return false;
+		}
+
+		private ProcessAsync StartProcess(string torArguments)
+		{
+			ProcessStartInfo startInfo = new()
+			{
+				FileName = Settings.TorBinaryFilePath,
+				Arguments = torArguments,
+				UseShellExecute = false,
+				CreateNoWindow = true,
+				RedirectStandardOutput = true,
+				WorkingDirectory = Settings.TorBinaryDir
+			};
+
+			if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+			{
+				var env = startInfo.EnvironmentVariables;
+
+				env["LD_LIBRARY_PATH"] = !env.ContainsKey("LD_LIBRARY_PATH") || string.IsNullOrEmpty(env["LD_LIBRARY_PATH"])
+					? Settings.TorBinaryDir
+					: Settings.TorBinaryDir + Path.PathSeparator + env["LD_LIBRARY_PATH"];
+
+				Logger.LogDebug($"Environment variable 'LD_LIBRARY_PATH' set to: '{env["LD_LIBRARY_PATH"]}'.");
+			}
+
+			ProcessAsync torProcess = new(startInfo);
+
+			Logger.LogInfo($"Starting Tor process ...");
+			torProcess.Start();
+			return torProcess;
 		}
 
 		/// <summary>
