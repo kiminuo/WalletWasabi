@@ -16,7 +16,6 @@ using WalletWasabi.Tor.Http;
 using WalletWasabi.Tor.Socks5.Exceptions;
 using WalletWasabi.Tor.Socks5.Models.Fields.OctetFields;
 using WalletWasabi.Tor.Socks5.Pool;
-using static NBitcoin.Protocol.Behaviors.ChainBehavior;
 
 namespace WalletWasabi.Tor
 {
@@ -82,7 +81,7 @@ namespace WalletWasabi.Tor
 				}
 
 				if (asyncEvent is BootstrapStatusEvent bootstrapEvent)
-{
+				{
 					Logger.LogInfo($"XXX: Bootstrap event: '{bootstrapEvent}'.");
 					bootstrapInfo = bootstrapEvent.Progress < 100
 						? $"{bootstrapEvent.Progress}/100"
