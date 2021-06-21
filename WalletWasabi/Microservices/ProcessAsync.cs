@@ -22,7 +22,7 @@ namespace WalletWasabi.Microservices
 		{
 		}
 
-		private ProcessAsync(Process process)
+		public ProcessAsync(Process process)
 		{
 			Process = process;
 		}

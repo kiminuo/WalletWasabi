@@ -54,21 +54,26 @@ namespace WalletWasabi.Tor
 				if (isAlreadyRunning)
 				{
 					Logger.LogInfo($"Tor is already running on {Settings.SocksEndpoint.Address}:{Settings.SocksEndpoint.Port}.");
-					TorControlClient = await InitTorControlAsync(token).ConfigureAwait(false);
-					return true;
+					controlClient = await InitTorControlAsync(token).ConfigureAwait(false);
+
+					// Tor process can crash even between these two commands too.
+					int processId = await controlClient.GetTorProcessIdAsync(token).ConfigureAwait(false);
+					process = new ProcessAsync(Process.GetProcessById(processId));
 				}
-
-				string arguments = Settings.GetCmdArguments();
-				process = StartProcess(arguments);
-
-				bool isRunning = await EnsureRunningAsync(process, token).ConfigureAwait(false);
-
-				if (!isRunning)
+				else
 				{
-					return false;
-				}
+					string arguments = Settings.GetCmdArguments();
+					process = StartProcess(arguments);
 
-				TorControlClient = await InitTorControlAsync(token).ConfigureAwait(false);
+					bool isRunning = await EnsureRunningAsync(process, token).ConfigureAwait(false);
+
+					if (!isRunning)
+					{
+						return false;
+					}
+
+					controlClient = await InitTorControlAsync(token).ConfigureAwait(false);					
+				}
 
 				Logger.LogInfo("Tor is running.");
 
