@@ -61,7 +61,7 @@ namespace WalletWasabi.Gui.ViewModels
 			Backend = BackendStatus.NotConnected;
 			UseTor = false;
 			Tor = TorStatus.NotRunning;
-			_torStatusXXX = "<No info yet>";
+			_torStatusXXX = "";
 			Peers = 0;
 			_exchangeRate = "";
 			IsExchangeRateAvailable = false;

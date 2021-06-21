@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using WalletWasabi.Bases;
 using WalletWasabi.Logging;
 using WalletWasabi.Tor.Control;
-using WalletWasabi.Tor.Control.Exceptions;
 using WalletWasabi.Tor.Control.Messages;
 using WalletWasabi.Tor.Control.Messages.CircuitStatus;
 using WalletWasabi.Tor.Control.Messages.Events;
