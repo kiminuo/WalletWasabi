@@ -43,6 +43,9 @@ namespace WalletWasabi.Tor
 		{
 			ThrowIfDisposed();
 
+			ProcessAsync? process = null;
+			TorControlClient? controlClient = null;
+
 			try
 			{
 				// Is Tor already running? Either our Tor process from previous Wasabi Wallet run or possibly user's own Tor.
@@ -56,41 +59,24 @@ namespace WalletWasabi.Tor
 				}
 
 				string arguments = Settings.GetCmdArguments();
-				TorProcess = StartProcess(arguments);
+				process = StartProcess(arguments);
 
-				// Ensure it's running.
-				int i = 0;
-				while (true)
+				bool isRunning = await EnsureRunningAsync(process, token).ConfigureAwait(false);
+
+				if (!isRunning)
 				{
-					i++;
-
-					bool isRunning = await TcpConnectionFactory.IsTorRunningAsync().ConfigureAwait(false);
-
-					if (isRunning)
-					{
-						break;
-					}
-
-					if (TorProcess.HasExited)
-					{
-						Logger.LogError("Tor process failed to start!");
-						return false;
-					}
-
-					const int MaxAttempts = 25;
-
-					if (i >= MaxAttempts)
-					{
-						Logger.LogError($"All {MaxAttempts} attempts to connect to Tor failed.");
-						return false;
-					}
-
-					// Wait 250 milliseconds between attempts.
-					await Task.Delay(250, token).ConfigureAwait(false);
+					return false;
 				}
 
-				Logger.LogInfo("Tor is running.");
 				TorControlClient = await InitTorControlAsync(token).ConfigureAwait(false);
+
+				Logger.LogInfo("Tor is running.");
+
+				// Only now we know that Tor process is fully correctly started.
+				TorProcess = process;
+				TorControlClient = controlClient;
+				controlClient = null;
+				process = null;
 
 				return true;
 			}
@@ -103,8 +89,53 @@ namespace WalletWasabi.Tor
 			{
 				Logger.LogError("Could not automatically start Tor. Try running Tor manually.", ex);
 			}
+			finally
+			{
+				if (controlClient is not null)
+				{
+					await controlClient.DisposeAsync().ConfigureAwait(false);
+				}
+
+				process?.Dispose();
+			}
 
 			return false;
+		}
+
+		/// <summary>Ensure <paramref name="process"/> is actually running.</summary>
+		private async Task<bool> EnsureRunningAsync(ProcessAsync process, CancellationToken cancellationToken)
+		{
+			int i = 0;
+			while (true)
+			{
+				i++;
+
+				bool isRunning = await TcpConnectionFactory.IsTorRunningAsync().ConfigureAwait(false);
+
+				if (isRunning)
+				{
+					break;
+				}
+
+				if (process.HasExited)
+				{
+					Logger.LogError("Tor process failed to start!");
+					return false;
+				}
+
+				const int MaxAttempts = 25;
+
+				if (i >= MaxAttempts)
+				{
+					Logger.LogError($"All {MaxAttempts} attempts to connect to Tor failed.");
+					return false;
+				}
+
+				// Wait 250 milliseconds between attempts.
+				await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+			}
+
+			return true;
 		}
 
 		private ProcessAsync StartProcess(string torArguments)
