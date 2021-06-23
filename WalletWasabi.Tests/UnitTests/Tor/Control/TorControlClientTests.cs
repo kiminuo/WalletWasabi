@@ -10,13 +10,15 @@ using Xunit;
 
 namespace WalletWasabi.Tests.UnitTests.Tor.Control
 {
+	/// <seealso cref="XunitConfiguration.SerialCollectionDefinition"/>
+	[Collection("Serial unit tests collection")]
 	public class TorControlClientTests
 	{
 		/// <summary>Verifies that client receives correct async events from Tor.</summary>
 		[Fact]
 		public async Task ReceiveTorAsyncEventsUsingForeachAsync()
 		{
-			using CancellationTokenSource timeoutCts = new(TimeSpan.FromMinutes(4));
+			using CancellationTokenSource timeoutCts = new(TimeSpan.FromMinutes(2));
 
 			// Test parameters.
 			const int ExpectedEventsNo = 3;
