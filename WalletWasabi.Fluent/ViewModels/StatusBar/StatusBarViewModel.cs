@@ -13,6 +13,7 @@ using WalletWasabi.Fluent.Models;
 using WalletWasabi.Helpers;
 using WalletWasabi.Models;
 using WalletWasabi.Services;
+using WalletWasabi.Tor;
 
 namespace WalletWasabi.Fluent.ViewModels.StatusBar
 {
@@ -20,6 +21,7 @@ namespace WalletWasabi.Fluent.ViewModels.StatusBar
 	{
 		[AutoNotify] private StatusBarState _currentState;
 		[AutoNotify] private TorStatus _torStatus;
+		[AutoNotify] private TorStatusReport _torStatusReport;
 		[AutoNotify] private BackendStatus _backendStatus;
 		[AutoNotify] private RpcStatus? _bitcoinCoreStatus;
 		[AutoNotify] private int _peers;
@@ -93,12 +95,18 @@ namespace WalletWasabi.Fluent.ViewModels.StatusBar
 			var synchronizer = Services.Synchronizer;
 			var rpcMonitor = Services.HostedServices.GetOrDefault<RpcMonitor>();
 			var updateChecker = Services.HostedServices.Get<UpdateChecker>();
+			var torMonitor = Services.HostedServices.Get<TorMonitor>();
 
 			BitcoinCoreStatus = rpcMonitor?.RpcStatus ?? RpcStatus.Unresponsive;
 
 			synchronizer.WhenAnyValue(x => x.TorStatus)
 				.ObserveOn(RxApp.MainThreadScheduler)
 				.Subscribe(status => TorStatus = UseTor ? status : TorStatus.TurnedOff)
+				.DisposeWith(Disposables);
+
+			Observable.FromEventPattern(torMonitor, nameof(torMonitor.OnTorStatusReport))
+				.ObserveOn(RxApp.MainThreadScheduler)
+				.Subscribe(status => TorStatusReport = (TorStatusReport)status.EventArgs)
 				.DisposeWith(Disposables);
 
 			synchronizer.WhenAnyValue(x => x.BackendStatus)

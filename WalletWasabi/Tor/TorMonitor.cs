@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using WalletWasabi.Bases;
 using WalletWasabi.Logging;
+using WalletWasabi.Models;
 using WalletWasabi.Tor.Control;
 using WalletWasabi.Tor.Control.Exceptions;
 using WalletWasabi.Tor.Control.Messages;
@@ -27,6 +28,7 @@ namespace WalletWasabi.Tor
 		public static readonly TimeSpan CheckIfRunningAfterTorMisbehavedFor = TimeSpan.FromSeconds(7);
 
 		public event EventHandler<string>? TorStatusChanged;
+		public event EventHandler<TorStatusReport>? OnTorStatusReport;
 
 		/// <summary>
 		/// Creates a new instance of the object.
@@ -62,6 +64,7 @@ namespace WalletWasabi.Tor
 				SizeLimit = 500
 			});
 
+			int bootstrapProgress = 0;
 			string bootstrapInfo = "<Loading>";
 			bool circuitEstablished = false;
 			string circuitsInfo = "<Loading>";
@@ -86,6 +89,8 @@ namespace WalletWasabi.Tor
 					bootstrapInfo = bootstrapEvent.Progress < 100
 						? $"{bootstrapEvent.Progress}/100"
 						: "DONE";
+
+					bootstrapProgress = bootstrapEvent.Progress;
 				}
 				else if (asyncEvent is StatusEvent statusEvent)
 				{
@@ -98,6 +103,11 @@ namespace WalletWasabi.Tor
 				else if (asyncEvent is CircEvent circEvent)
 				{
 					CircuitInfo info = circEvent.CircuitInfo;
+
+					if (info.CircStatus is CircStatus.BUILT or CircStatus.EXTENDED or CircStatus.GUARD_WAIT)
+					{
+						circuitEstablished = true;
+					}
 
 					if (info.CircStatus is CircStatus.CLOSED or CircStatus.FAILED)
 					{
@@ -124,6 +134,9 @@ namespace WalletWasabi.Tor
 				}
 
 				TorStatusChanged?.Invoke(this, torStatusXXX);
+
+				TorStatusReport report = new(bootstrapProgress, circuitEstablished);
+				OnTorStatusReport?.Invoke(this, report);
 			}
 		}
 

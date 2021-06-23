@@ -40,9 +40,12 @@
 
           <!-- Status -->
           <StackPanel Spacing="16">
+            <!--<c:StatusItem Icon="{StaticResource tor_icon}"
+                          Title="Tor"
+                          StatusText="{Binding TorStatus, Converter={x:Static converters:StatusConverters.TorStatusToString}}" />-->
             <c:StatusItem Icon="{StaticResource tor_icon}"
                           Title="Tor"
-                          StatusText="{Binding TorStatus, Converter={x:Static converters:StatusConverters.TorStatusToString}}" />
+                          StatusText="{Binding TorStatusReport, Converter={x:Static converters:StatusConverters.TorStatusReportToString}}" />
             <c:StatusItem Icon="{StaticResource connector_regular}"
                           Title="Backend"
                           StatusText="{Binding BackendStatus, Converter={x:Static converters:StatusConverters.BackendStatusToString}}" />
