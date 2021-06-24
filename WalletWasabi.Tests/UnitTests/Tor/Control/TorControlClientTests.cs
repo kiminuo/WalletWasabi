@@ -10,15 +10,13 @@ using Xunit;
 
 namespace WalletWasabi.Tests.UnitTests.Tor.Control
 {
-	/// <seealso cref="XunitConfiguration.SerialCollectionDefinition"/>
-	[Collection("Serial unit tests collection")]
 	public class TorControlClientTests
 	{
 		/// <summary>Verifies that client receives correct async events from Tor.</summary>
 		[Fact]
 		public async Task ReceiveTorAsyncEventsUsingForeachAsync()
 		{
-			using CancellationTokenSource timeoutCts = new(TimeSpan.FromMinutes(2));
+			using CancellationTokenSource timeoutCts = new(TimeSpan.FromMinutes(3));
 
 			// Test parameters.
 			const int ExpectedEventsNo = 3;
@@ -37,6 +35,17 @@ namespace WalletWasabi.Tests.UnitTests.Tor.Control
 			// This must happen after a client is subscribed.
 			Task serverTask = Task.Run(async () =>
 			{
+				// We do not want to send the data until the client is really subscribed.
+				while (!timeoutCts.IsCancellationRequested)
+				{
+					if (client.SubscriberCount == 1)
+					{
+						break;
+					}
+
+					await Task.Delay(200).ConfigureAwait(false);
+				}
+
 				for (int i = 0; i < ExpectedEventsNo; i++)
 				{
 					Logger.LogTrace($"Server: Send async Tor event (#{i}): '650 {AsyncEventContent}'.");
