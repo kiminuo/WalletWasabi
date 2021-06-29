@@ -4,6 +4,7 @@
         <ComponentGroup Id="ProductComponents">
             <ComponentRef Id="StartMenuShortcut" />
             <ComponentRef Id="DesktopShortcut" />
+            <ComponentRef Id="StartupShortcut" />
         </ComponentGroup>
 
         <DirectoryRef Id="INSTALLFOLDER" FileSource="SourceDir">
@@ -17,6 +18,14 @@
                 <Shortcut Id="DesktopShortcut" Name="!(loc.ProductName)" Description="!(loc.Description)" Target="[INSTALLFOLDER]wassabee.exe" Directory="DesktopFolder" WorkingDirectory="INSTALLFOLDER" Icon="icon.ico" />
                 <RegistryValue Id="DesktopShortcutKey" Root="HKCU" Key="SOFTWARE\!(loc.ProductNameFolder)" Name="DesktopShortcut" Value="1" Type="integer" KeyPath="yes" />
                 <RemoveFolder Id="RemoveDesktop" Directory="DesktopFolder" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+
+        <DirectoryRef Id="StartupFolder">
+            <Component Id="StartupShortcut" Guid="{FA337088-6660-4BE6-A262-A2B857576C98}">
+                <Shortcut Id="ApplicationStartupShortcut" Name="!(loc.ProductName)" Description="!(loc.Description)" Target="[INSTALLFOLDER]wassabee.exe" WorkingDirectory="INSTALLFOLDER" />
+                <RegistryValue Root="HKCU" Key="SOFTWARE\!(loc.ProductNameFolder)" Name="StartupShortcut" Type="integer" Value="1" KeyPath="yes" />
+                <RemoveFolder Id="RemoveStartupFolder" Directory="StartupFolder" On="uninstall" />
             </Component>
         </DirectoryRef>
     </Fragment>

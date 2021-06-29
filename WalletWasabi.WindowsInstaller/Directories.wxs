@@ -10,6 +10,9 @@
             <!-- Desktop -->
             <Directory Id="DesktopFolder" />
 
+            <!-- Startup folder -->
+            <Directory Id="StartupFolder" Name="Startup" />
+
             <Directory Id="ProgramFiles64Folder">
                 <Directory Id="INSTALLFOLDER" Name="!(loc.ProductNameFolder)" />
             </Directory>

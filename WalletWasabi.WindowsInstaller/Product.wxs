@@ -28,7 +28,7 @@
             <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="99">1</Publish>
             <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="99">1</Publish>
         </UI>
-        <!-- Define components, shortcuts, files, etc... for instealler. -->
+        <!-- Define components, shortcuts, files, etc. for the installer. -->
         <Feature Id="ProductFeature" Title="Wasabi" Level="1">
             <ComponentGroupRef Id="ProductComponents" />
             <ComponentGroupRef Id="PublishedComponents" />
