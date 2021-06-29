@@ -1,12 +1,10 @@
 using System;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 using WalletWasabi.Helpers;
 using WalletWasabi.Userfacing;
 
@@ -56,8 +54,7 @@ namespace WalletWasabi.Packager
 		/// <summary>
 		/// Main entry point.
 		/// </summary>
-		[SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "The Main method is the entry point of a C# application")]
-		private static async Task Main(string[] args)
+		private static void Main(string[] args)
 		{
 			var argsProcessor = new ArgsProcessor(args);
 
