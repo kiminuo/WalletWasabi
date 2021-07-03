@@ -169,16 +169,15 @@ namespace WalletWasabi.Tor
 				Logger.LogDebug($"Environment variable 'LD_LIBRARY_PATH' set to: '{env["LD_LIBRARY_PATH"]}'.");
 			}
 
-			ProcessAsync torProcess = new(startInfo);
+			ProcessAsync process = new(startInfo);
 
-			Logger.LogInfo($"Starting Tor process ...");
-			torProcess.Start();
-			return torProcess;
+			Logger.LogInfo("Starting Tor process ...");
+			process.Start();
+
+			return process;
 		}
 
-		/// <summary>
-		/// Connects to Tor control using a TCP client or throws <see cref="TorControlException"/>.
-		/// </summary>
+		/// <summary>Connects to Tor control using a TCP client or throws <see cref="TorControlException"/>.</summary>
 		/// <exception cref="TorControlException">When authentication fails for some reason.</exception>
 		/// <seealso href="https://gitweb.torproject.org/torspec.git/tree/control-spec.txt">This method follows instructions in 3.23. TAKEOWNERSHIP.</seealso>
 		internal virtual async Task<TorControlClient> InitTorControlAsync(CancellationToken token = default)
