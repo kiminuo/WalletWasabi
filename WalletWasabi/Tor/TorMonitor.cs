@@ -45,6 +45,7 @@ namespace WalletWasabi.Tor
 		private TorHttpClient HttpClient { get; }
 		private TorProcessManager TorProcessManager { get; }
 
+		// TODO: Once TorProcessManager is connected.
 		public async Task InitializeAsync(CancellationToken cancellationToken)
 		{
 			TorControlClient client = TorProcessManager.TorControlClient!;
