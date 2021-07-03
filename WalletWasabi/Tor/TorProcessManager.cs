@@ -13,9 +13,7 @@ using WalletWasabi.Tor.Socks5;
 
 namespace WalletWasabi.Tor
 {
-	/// <summary>
-	/// Manages lifetime of Tor process.
-	/// </summary>
+	/// <summary>Manages lifetime of Tor process.</summary>
 	/// <seealso href="https://2019.www.torproject.org/docs/tor-manual.html.en"/>
 	public class TorProcessManager
 	{
@@ -227,7 +225,7 @@ namespace WalletWasabi.Tor
 				// > SHUTDOWN" and wait for the Tor process to close.)
 				if (Settings.TerminateOnExit)
 				{
-					_ = await torControlClient.SignalShutdownAsync().ConfigureAwait(false);
+					await torControlClient.SignalShutdownAsync().ConfigureAwait(false);
 				}
 
 				// Leads to Tor termination because we sent TAKEOWNERSHIP command.
