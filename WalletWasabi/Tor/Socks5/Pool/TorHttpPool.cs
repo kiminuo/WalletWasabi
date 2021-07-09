@@ -257,6 +257,9 @@ namespace WalletWasabi.Tor.Socks5.Pool
 			// in forwarded messages.
 			request.Version = HttpProtocol.HTTP11.Version;
 			request.Headers.AcceptEncoding.Add(new("gzip"));
+			request.Headers.Add("User-Agent", "");
+			request.Headers.UserAgent.Clear();
+			request.Headers.UserAgent.ParseAdd("TODO");
 
 			string requestString = await request.ToHttpStringAsync(token).ConfigureAwait(false);
 			byte[] bytes = Encoding.UTF8.GetBytes(requestString);
