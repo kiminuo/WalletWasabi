@@ -81,8 +81,10 @@ namespace WalletWasabi.Fluent.Models
 
 		private void KeepScanning(VideoCapture camera)
 		{
-			WriteableBitmap? lastBitmap = null;
-			WriteableBitmap? currentBitmap = null;
+			PixelSize pixelSize = new(camera.FrameWidth, camera.FrameHeight);
+			Vector dpi = new(96, 96);
+			using WriteableBitmap writeableBitmap = new(pixelSize, dpi, PixelFormat.Rgba8888, AlphaFormat.Unpremul);
+
 			using QRCodeDetector qRCodeDetector = new();
 			using Mat frame = new();
 
@@ -101,12 +103,10 @@ namespace WalletWasabi.Fluent.Models
 
 					iterations++;
 					stopwatch.Start();
-					currentBitmap = ConvertMatToWriteableBitmap(frame);
+					ConvertMatToWriteableBitmap(frame, writeableBitmap);
 					stopwatch.Stop();
 
-					NewImageArrived?.Invoke(this, currentBitmap);
-					lastBitmap?.Dispose();
-					lastBitmap = currentBitmap;
+					NewImageArrived?.Invoke(this, writeableBitmap);
 
 					if (qRCodeDetector.Detect(frame, out Point2f[] points))
 					{
@@ -130,53 +130,42 @@ namespace WalletWasabi.Fluent.Models
 				catch (OpenCVException exc)
 				{
 					Logger.LogWarning(exc);
-					currentBitmap?.Dispose();
 				}
 			}
 
-			Logger.LogError($"XXX: {stopwatch.ElapsedMilliseconds}/{iterations} ~ {stopwatch.ElapsedMilliseconds / (double)iterations}");
-
-			lastBitmap?.Dispose();
-			currentBitmap?.Dispose();
+			Logger.LogError($"XXX: {stopwatch.ElapsedMilliseconds}/{iterations} ~ {stopwatch.ElapsedMilliseconds / (double)iterations}");		
 		}
 
-		private WriteableBitmap ConvertMatToWriteableBitmap(Mat frame)
+		private void ConvertMatToWriteableBitmap(Mat frame, WriteableBitmap writeableBitmap)
 		{
-			PixelSize pixelSize = new(frame.Width, frame.Height);
-			Vector dpi = new(96, 96);
-			WriteableBitmap writeableBitmap = new(pixelSize, dpi, PixelFormat.Rgba8888, AlphaFormat.Unpremul);
 			ArrayPool<int> pool = ArrayPool<int>.Shared;
 
-			using (ILockedFramebuffer fb = writeableBitmap.Lock())
+			using ILockedFramebuffer fb = writeableBitmap.Lock();
+			Mat.Indexer<Vec3b> indexer = frame.GetGenericIndexer<Vec3b>();
+			int dataSize = fb.Size.Width * fb.Size.Height;
+			int[] data = pool.Rent(dataSize);
+
+			try
 			{
-				Mat.Indexer<Vec3b> indexer = frame.GetGenericIndexer<Vec3b>();
-				int dataSize = fb.Size.Width * fb.Size.Height;
-				int[] data = pool.Rent(dataSize);
-
-				try
+				for (int y = 0; y < frame.Height; y++)
 				{
-					for (int y = 0; y < frame.Height; y++)
+					int rowIndex = y * fb.Size.Width;
+
+					for (int x = 0; x < frame.Width; x++)
 					{
-						int rowIndex = y * fb.Size.Width;
+						(byte r, byte g, byte b) = indexer[y, x];
+						Color color = new(255, r, g, b);
 
-						for (int x = 0; x < frame.Width; x++)
-						{
-							(byte r, byte g, byte b) = indexer[y, x];
-							Color color = new(255, r, g, b);
-							
-							data[rowIndex + x] = (int)color.ToUint32();
-						}
+						data[rowIndex + x] = (int)color.ToUint32();
 					}
+				}
 
-					Marshal.Copy(data, 0, fb.Address, dataSize);
-				}
-				finally
-				{
-					pool.Return(data);
-				}
+				Marshal.Copy(data, 0, fb.Address, dataSize);
 			}
-
-			return writeableBitmap;
+			finally
+			{
+				pool.Return(data);
+			}
 		}
 
 		public event EventHandler<WriteableBitmap>? NewImageArrived;

@@ -1,19 +1,20 @@
-using System;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Reactive;
-using System.Reactive.Disposables;
-using System.Reactive.Linq;
-using System.Threading.Tasks;
-using System.Windows.Input;
 using Avalonia;
-using Avalonia.Threading;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using DynamicData;
 using DynamicData.Binding;
 using NBitcoin;
 using NBitcoin.Payment;
 using ReactiveUI;
+using System;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Reactive;
+using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
+using System.Threading.Tasks;
+using System.Windows.Input;
 using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Fluent.Models;
 using WalletWasabi.Fluent.Validation;
@@ -26,7 +27,6 @@ using WalletWasabi.Userfacing;
 using WalletWasabi.Wallets;
 using WalletWasabi.WebClients.PayJoin;
 using Constants = WalletWasabi.Helpers.Constants;
-using System.Reactive.Concurrency;
 
 namespace WalletWasabi.Fluent.ViewModels.Wallets.Send
 {
@@ -76,7 +76,15 @@ namespace WalletWasabi.Fluent.ViewModels.Wallets.Send
 					{
 						IsCameraLoadingAnimationVisible = false;
 					}
-					QrImage = args.EventArgs;
+
+					if (QrImage == null)
+					{
+						QrImage = args.EventArgs;
+					}
+					else
+					{
+						this.RaisePropertyChanged(nameof(_qrImage));
+					}
 				});
 
 			Observable.FromEventPattern<string>(_qrReader, nameof(_qrReader.CorrectAddressFound))
