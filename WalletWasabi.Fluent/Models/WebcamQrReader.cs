@@ -83,11 +83,12 @@ namespace WalletWasabi.Fluent.Models
 			WriteableBitmap? lastBitmap = null;
 			WriteableBitmap? currentBitmap = null;
 			using QRCodeDetector qRCodeDetector = new();
+			using Mat frame = new();
+
 			while (!RequestEnd)
 			{
 				try
 				{
-					using Mat frame = new();
 					bool gotBackFrame = camera.Read(frame);
 					if (!gotBackFrame || frame.Width == 0 || frame.Height == 0)
 					{
