@@ -38,10 +38,15 @@ namespace WalletWasabi.Fluent.Models
 				}
 				ScanningTask = Task.Run(() =>
 				{
-					VideoCapture? camera = null;
+					using VideoCapture camera = new();
+
 					try
 					{
-						camera = OpenCamera();
+						if (!camera.Open(DefaultCameraId))
+						{
+							throw new InvalidOperationException("Could not open webcam.");
+						}				
+
 						RequestEnd = false;
 						Scan(camera);
 					}
@@ -52,8 +57,7 @@ namespace WalletWasabi.Fluent.Models
 					}
 					finally
 					{
-						camera?.Release();
-						camera?.Dispose();
+						camera.Release();
 					}
 				});
 			}
@@ -121,16 +125,6 @@ namespace WalletWasabi.Fluent.Models
 			}
 			lastBitmap?.Dispose();
 			currentBitmap?.Dispose();
-		}
-
-		private VideoCapture OpenCamera()
-		{
-			VideoCapture camera = new();
-			if (!camera.Open(DefaultCameraId))
-			{
-				throw new InvalidOperationException("Could not open webcam.");
-			}
-			return camera;
 		}
 
 		private WriteableBitmap ConvertMatToWriteableBitmap(Mat frame)
