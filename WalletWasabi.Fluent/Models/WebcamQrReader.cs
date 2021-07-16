@@ -48,7 +48,7 @@ namespace WalletWasabi.Fluent.Models
 						}				
 
 						RequestEnd = false;
-						Scan(camera);
+						KeepScanning(camera);
 					}
 					catch (Exception exc)
 					{
@@ -77,7 +77,7 @@ namespace WalletWasabi.Fluent.Models
 			}
 		}
 
-		private void Scan(VideoCapture camera)
+		private void KeepScanning(VideoCapture camera)
 		{
 			WriteableBitmap? lastBitmap = null;
 			WriteableBitmap? currentBitmap = null;
