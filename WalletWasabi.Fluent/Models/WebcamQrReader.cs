@@ -149,10 +149,7 @@ namespace WalletWasabi.Fluent.Models
 
 						for (int x = 0; x < frame.Width; x++)
 						{
-							Vec3b pixel = indexer[y, x];
-							byte r = pixel.Item0;
-							byte g = pixel.Item1;
-							byte b = pixel.Item2;
+							(byte r, byte g, byte b) = indexer[y, x];
 							Color color = new(255, r, g, b);
 							
 							data[rowIndex + x] = (int)color.ToUint32();
