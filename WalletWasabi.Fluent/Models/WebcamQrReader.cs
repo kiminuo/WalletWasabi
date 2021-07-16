@@ -11,6 +11,7 @@ using NBitcoin;
 using Nito.AsyncEx;
 using Avalonia.Platform;
 using System.Buffers;
+using System.Diagnostics;
 
 namespace WalletWasabi.Fluent.Models
 {
@@ -85,6 +86,9 @@ namespace WalletWasabi.Fluent.Models
 			using QRCodeDetector qRCodeDetector = new();
 			using Mat frame = new();
 
+			long iterations = 0;
+			Stopwatch stopwatch = new();
+
 			while (!RequestEnd)
 			{
 				try
@@ -94,7 +98,11 @@ namespace WalletWasabi.Fluent.Models
 					{
 						continue;
 					}
+
+					iterations++;
+					stopwatch.Start();
 					currentBitmap = ConvertMatToWriteableBitmap(frame);
+					stopwatch.Stop();
 
 					NewImageArrived?.Invoke(this, currentBitmap);
 					lastBitmap?.Dispose();
@@ -125,6 +133,9 @@ namespace WalletWasabi.Fluent.Models
 					currentBitmap?.Dispose();
 				}
 			}
+
+			Logger.LogError($"XXX: {stopwatch.ElapsedMilliseconds}/{iterations} ~ {stopwatch.ElapsedMilliseconds / (double)iterations}");
+
 			lastBitmap?.Dispose();
 			currentBitmap?.Dispose();
 		}
