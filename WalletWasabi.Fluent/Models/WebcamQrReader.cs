@@ -10,6 +10,7 @@ using WalletWasabi.Userfacing;
 using NBitcoin;
 using Nito.AsyncEx;
 using Avalonia.Platform;
+using System.Buffers;
 
 namespace WalletWasabi.Fluent.Models
 {
@@ -131,26 +132,41 @@ namespace WalletWasabi.Fluent.Models
 		{
 			PixelSize pixelSize = new(frame.Width, frame.Height);
 			Vector dpi = new(96, 96);
-			var writeableBitmap = new WriteableBitmap(pixelSize, dpi, PixelFormat.Rgba8888, AlphaFormat.Unpremul);
+			WriteableBitmap writeableBitmap = new(pixelSize, dpi, PixelFormat.Rgba8888, AlphaFormat.Unpremul);
+			ArrayPool<int> pool = ArrayPool<int>.Shared;
 
-			using (var fb = writeableBitmap.Lock())
+			using (ILockedFramebuffer fb = writeableBitmap.Lock())
 			{
-				var indexer = frame.GetGenericIndexer<Vec3b>();
-				int[] data = new int[fb.Size.Width * fb.Size.Height];
-				for (int y = 0; y < frame.Height; y++)
+				Mat.Indexer<Vec3b> indexer = frame.GetGenericIndexer<Vec3b>();
+				int dataSize = fb.Size.Width * fb.Size.Height;
+				int[] data = pool.Rent(dataSize);
+
+				try
 				{
-					for (int x = 0; x < frame.Width; x++)
+					for (int y = 0; y < frame.Height; y++)
 					{
-						Vec3b pixel = indexer[y, x];
-						byte r = pixel.Item0;
-						byte g = pixel.Item1;
-						byte b = pixel.Item2;
-						var color = new Color(255, r, g, b);
-						data[y * fb.Size.Width + x] = (int)color.ToUint32();
+						int rowIndex = y * fb.Size.Width;
+
+						for (int x = 0; x < frame.Width; x++)
+						{
+							Vec3b pixel = indexer[y, x];
+							byte r = pixel.Item0;
+							byte g = pixel.Item1;
+							byte b = pixel.Item2;
+							Color color = new(255, r, g, b);
+							
+							data[rowIndex + x] = (int)color.ToUint32();
+						}
 					}
+
+					Marshal.Copy(data, 0, fb.Address, dataSize);
 				}
-				Marshal.Copy(data, 0, fb.Address, fb.Size.Width * fb.Size.Height);
+				finally
+				{
+					pool.Return(data);
+				}
 			}
+
 			return writeableBitmap;
 		}
 
